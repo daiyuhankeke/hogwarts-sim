@@ -27,8 +27,8 @@
           <label class="full-width">邀请码（若部署时设置了 INVITE_CODE）
             <input id="invite-code" placeholder="例：hogwarts2026" maxlength="40">
           </label>
-          <label>姓名 *
-            <input name="name" required placeholder="例：艾拉·陈" maxlength="20">
+          <label>姓名
+            <input name="name" value="艾拉·格林" placeholder="例：艾拉·陈" maxlength="20">
           </label>
           <label>学院 *
             <select name="house" required>
@@ -56,27 +56,24 @@
               <option value="麻瓜出身">麻瓜出身</option>
             </select>
           </label>
-          <label class="full-width">外貌特征 *
-            <input name="appearance" required placeholder="例：深棕卷发，琥珀色眼睛，左手腕有小疤" maxlength="80">
+          <label class="full-width">外貌特征
+            <input name="appearance" value="深棕卷发，琥珀色眼睛，气质安静" placeholder="例：深棕卷发，琥珀色眼睛，左手腕有小疤" maxlength="80">
           </label>
-          <label class="full-width">特殊才能（可选）
-            <input name="talent" placeholder="例：魁地奇尖子 / 魔药天才" maxlength="60">
-          </label>
+          <div class="full-width talent-section">
+            <span class="field-label">特殊才能（可多选，也可自拟）</span>
+            <div id="talent-presets" class="talent-grid"></div>
+            <label class="talent-custom-label">
+              自拟才能（多个请用逗号分隔）
+              <input name="talentCustom" placeholder="例：蛇佬腔感知 / 魔杖学专长" maxlength="120">
+            </label>
+            <p id="talent-summary" class="hint">已选：无</p>
+          </div>
           <label class="full-width">自定义补充（可选）
             <textarea name="custom" placeholder="其他你想让 DM 知道的信息"></textarea>
           </label>
           <label>首要想攻略谁
-            <select name="target">
+            <select name="target" id="target-select">
               <option value="先不选">先不选</option>
-              <option value="哈利">哈利</option>
-              <option value="德拉科">德拉科</option>
-              <option value="西奥多">西奥多</option>
-              <option value="布雷斯">布雷斯</option>
-              <option value="弗雷德">弗雷德</option>
-              <option value="乔治">乔治</option>
-              <option value="塞德里克">塞德里克</option>
-              <option value="奥利弗·伍德">奥利弗·伍德</option>
-              <option value="双子夹心">双子夹心</option>
             </select>
           </label>
           <label>初始氛围偏好

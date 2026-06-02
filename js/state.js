@@ -1,19 +1,13 @@
+import {
+  ROMANCE_TARGETS,
+  YEAR_OFFSETS,
+  computeNpcYears,
+  normalizeProfile,
+} from './character-config.js';
+
 const STORAGE_KEY = 'hogwarts-sim-save';
 const SLOT_PREFIX = 'hogwarts-sim-slot-';
 const MAX_SLOTS = 3;
-
-const ROMANCE_TARGETS = ['哈利', '德拉科', '西奥多', '布雷斯', '弗雷德', '乔治', '塞德里克', '奥利弗·伍德'];
-
-const YEAR_OFFSETS = {
-  '哈利': 0,
-  '德拉科': 0,
-  '西奥多': 0,
-  '布雷斯': 0,
-  '弗雷德': 2,
-  '乔治': 2,
-  '塞德里克': 3,
-  '奥利弗·伍德': 3,
-};
 
 const AFFECTION_STAGES = [
   { max: 20, stage: '陌生人' },
@@ -32,14 +26,6 @@ export function getStageFromAffection(affection) {
   return '热恋';
 }
 
-export function computeNpcYears(playerYear) {
-  const years = {};
-  for (const [name, offset] of Object.entries(YEAR_OFFSETS)) {
-    years[name] = playerYear + offset;
-  }
-  return years;
-}
-
 export function createInitialRelationships() {
   const rel = {};
   for (const name of ROMANCE_TARGETS) {
@@ -48,24 +34,25 @@ export function createInitialRelationships() {
   return rel;
 }
 
-export function createInitialState(profile) {
-  const year = Number(profile.year);
+/** 旧存档兼容：补全新增攻略对象 */
+export function migrateRelationships(relationships) {
+  const rel = { ...relationships };
+  for (const name of ROMANCE_TARGETS) {
+    if (!rel[name]) rel[name] = { stage: '陌生人', affection: 0 };
+  }
+  return rel;
+}
+
+export function createInitialState(rawProfile) {
+  const profile = normalizeProfile(rawProfile);
+  const year = profile.year;
+
   return {
-    profile: {
-      name: profile.name.trim(),
-      house: profile.house,
-      year,
-      bloodStatus: profile.bloodStatus,
-      appearance: profile.appearance.trim(),
-      talent: (profile.talent || '').trim(),
-      custom: (profile.custom || '').trim(),
-      target: profile.target,
-      tone: profile.tone,
-    },
+    profile,
     time: { week: 1, weekday: year === 1 ? '周日' : '周一', season: '秋' },
     scene: { location: year === 1 ? '国王十字车站' : '霍格沃茨城堡', weather: '阴' },
     player: { mood: 70 },
-    currentTarget: profile.target === '先不选' ? null : profile.target,
+    currentTarget: profile.target === '先不选' || profile.target === '双子夹心' ? null : profile.target,
     relationships: createInitialRelationships(),
     npcYears: computeNpcYears(year),
     flags: {
@@ -98,6 +85,7 @@ export function mergeStateUpdate(state, update) {
   if (update.summary) next.summary = update.summary;
 
   if (update.relationships) {
+    next.relationships = migrateRelationships(next.relationships);
     for (const [name, rel] of Object.entries(update.relationships)) {
       if (!next.relationships[name]) next.relationships[name] = { affection: 0, stage: '陌生人' };
       if (rel.affection !== undefined) {
@@ -130,7 +118,15 @@ export function loadGame(slot = 0) {
   const raw = localStorage.getItem(key);
   if (!raw) return null;
   try {
-    return JSON.parse(raw);
+    const state = JSON.parse(raw);
+    if (state.relationships) state.relationships = migrateRelationships(state.relationships);
+    if (state.profile?.year) {
+      state.npcYears = { ...computeNpcYears(state.profile.year), ...(state.npcYears || {}) };
+    }
+    if (state.profile?.talent && !state.profile.talents) {
+      state.profile.talents = state.profile.talent.split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+    }
+    return state;
   } catch {
     return null;
   }
@@ -145,6 +141,7 @@ export function importSave(jsonString) {
   if (!state.profile || !state.relationships) {
     throw new Error('无效的存档格式');
   }
+  state.relationships = migrateRelationships(state.relationships);
   return state;
 }
 
@@ -165,4 +162,4 @@ export function addHistoryEntry(state, action, narrative) {
   return state;
 }
 
-export { ROMANCE_TARGETS, MAX_SLOTS };
+export { ROMANCE_TARGETS, MAX_SLOTS, YEAR_OFFSETS, computeNpcYears };

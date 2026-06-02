@@ -246,7 +246,7 @@ textarea {
 
 #relationships-panel .rel-item {
   display: grid;
-  grid-template-columns: 4.5rem 3.5rem 1fr 2rem;
+  grid-template-columns: 5.5rem 3.5rem 1fr 2rem;
   gap: 0.35rem;
   align-items: center;
   font-size: 0.82rem;
@@ -360,6 +360,56 @@ textarea {
 
 .checkbox-label input {
   width: auto;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.talent-section {
+  padding: 0.75rem;
+  background: rgba(255, 254, 248, 0.5);
+  border: 1px dashed #c4a35a;
+  border-radius: 6px;
+}
+
+.talent-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+
+.talent-chip {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.35rem !important;
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  background: #fffef8;
+  border: 1px solid #c4a35a;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.talent-chip:has(input:checked) {
+  background: #fff3d6;
+  border-color: var(--house-accent);
+}
+
+.talent-chip input {
+  width: auto;
+  margin: 0;
+}
+
+.talent-custom-label {
+  margin-top: 0.25rem;
 }
 
 .player-info {

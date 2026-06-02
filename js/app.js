@@ -9,6 +9,12 @@ import {
   addHistoryEntry,
   MAX_SLOTS,
 } from './state.js';
+import {
+  DEFAULT_NAME,
+  DEFAULT_APPEARANCE,
+  TALENT_PRESETS,
+  TARGET_GROUPS,
+} from './character-config.js';
 import { clampRelationships, buildEventContext, getUpcomingEvents, checkEnding } from './game-systems.js';
 import {
   applyHouseTheme,
@@ -42,6 +48,7 @@ function init() {
   bindGameControls();
   bindSaveControls();
   bindInviteCode();
+  initCharacterFormOptions();
 
   const saved = loadGame(0);
   if (saved) {
@@ -59,6 +66,50 @@ function init() {
   }
 }
 
+function initCharacterFormOptions() {
+  const talentContainer = document.getElementById('talent-presets');
+  if (talentContainer) {
+    talentContainer.innerHTML = TALENT_PRESETS.map(
+      (t) =>
+        `<label class="talent-chip"><input type="checkbox" name="talentPreset" value="${t}"><span>${t}</span></label>`
+    ).join('');
+    talentContainer.addEventListener('change', updateTalentSummary);
+    document.querySelector('input[name="talentCustom"]')?.addEventListener('input', updateTalentSummary);
+  }
+
+  const targetSelect = document.getElementById('target-select');
+  if (targetSelect) {
+    targetSelect.innerHTML = '';
+    for (const group of TARGET_GROUPS) {
+      const og = document.createElement('optgroup');
+      og.label = group.label;
+      for (const name of group.options) {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        og.appendChild(opt);
+      }
+      targetSelect.appendChild(og);
+    }
+    targetSelect.value = '先不选';
+  }
+}
+
+function collectTalents(form) {
+  const presets = [...form.querySelectorAll('input[name="talentPreset"]:checked')].map((el) => el.value);
+  const customRaw = form.talentCustom?.value || '';
+  const custom = customRaw.split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+  return [...new Set([...presets, ...custom])];
+}
+
+function updateTalentSummary() {
+  const form = document.getElementById('character-form');
+  const el = document.getElementById('talent-summary');
+  if (!form || !el) return;
+  const talents = collectTalents(form);
+  el.textContent = talents.length ? `已选：${talents.join('、')}` : '已选：无';
+}
+
 function bindCharacterForm() {
   const form = document.getElementById('character-form');
   form?.addEventListener('submit', async (e) => {
@@ -71,21 +122,16 @@ function bindCharacterForm() {
       year: Number(form.year.value),
       bloodStatus: form.bloodStatus.value,
       appearance: form.appearance.value,
-      talent: form.talent.value,
+      talents: collectTalents(form),
       custom: form.custom.value,
       target: form.target.value,
       tone: form.tone.value,
       saveCedric: form.saveCedric?.checked ?? false,
     };
 
-    if (!profile.name.trim()) {
-      showError('请填写姓名');
-      return;
-    }
-
     gameState = createInitialState(profile);
     currentSlot = 0;
-    applyHouseTheme(profile.house);
+    applyHouseTheme(gameState.profile.house);
     showScreen('game-screen');
     renderGameUI();
 
@@ -94,13 +140,15 @@ function bindCharacterForm() {
 }
 
 function buildStartMessage(profile) {
+  const p = profile.name?.trim() ? profile : { ...profile, name: DEFAULT_NAME, appearance: DEFAULT_APPEARANCE };
   let msg = `开始游戏。角色信息：\n`;
-  msg += `姓名：${profile.name}\n学院：${profile.house}\n年级：${profile.year}\n`;
-  msg += `血统：${profile.bloodStatus}\n外貌：${profile.appearance}\n`;
-  if (profile.talent) msg += `特殊才能：${profile.talent}\n`;
-  if (profile.custom) msg += `自定义：${profile.custom}\n`;
-  msg += `首要想攻略：${profile.target}\n氛围偏好：${profile.tone}\n`;
-  if (profile.saveCedric) msg += `玩家希望在三强赛中拯救塞德里克。\n`;
+  msg += `姓名：${p.name}\n学院：${p.house}\n年级：${p.year}\n`;
+  msg += `血统：${p.bloodStatus}\n外貌：${p.appearance}\n`;
+  const talents = p.talents || [];
+  if (talents.length) msg += `特殊才能：${talents.join('、')}\n`;
+  if (p.custom) msg += `自定义：${p.custom}\n`;
+  msg += `首要想攻略：${p.target}\n氛围偏好：${p.tone}\n`;
+  if (p.saveCedric) msg += `玩家希望在三强赛中拯救塞德里克。\n`;
   return msg;
 }
 

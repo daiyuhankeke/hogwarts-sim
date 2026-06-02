@@ -14,6 +14,7 @@
         "bloodStatus": { "enum": ["纯血", "混血", "麻瓜出身"] },
         "appearance": { "type": "string" },
         "talent": { "type": "string" },
+        "talents": { "type": "array", "items": { "type": "string" } },
         "custom": { "type": "string" },
         "target": { "type": "string" },
         "tone": { "enum": ["偏甜", "偏日常", "偏小虐"] }
