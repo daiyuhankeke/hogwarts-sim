@@ -4,6 +4,8 @@ import {
   computeNpcYears,
   normalizeProfile,
 } from './character-config.js';
+import { createInitialMagic, migrateMagic, mergeMagicUpdate } from './magic-system.js';
+import { createFallbackWand } from './wand-system.js';
 
 const STORAGE_KEY = 'hogwarts-sim-save';
 const SLOT_PREFIX = 'hogwarts-sim-slot-';
@@ -70,6 +72,7 @@ export function createInitialState(rawProfile) {
     turnCount: 0,
     history: [],
     lastAction: null,
+    magic: createInitialMagic(profile),
   };
 }
 
@@ -105,6 +108,10 @@ export function mergeStateUpdate(state, update) {
     }
   }
 
+  if (update.magic) {
+    next.magic = mergeMagicUpdate(next.magic || migrateMagic(next), update.magic);
+  }
+
   return next;
 }
 
@@ -126,6 +133,10 @@ export function loadGame(slot = 0) {
     if (state.profile?.talent && !state.profile.talents) {
       state.profile.talents = state.profile.talent.split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
     }
+    state.magic = migrateMagic(state);
+    if (!state.profile.wand && state.profile.name) {
+      state.profile.wand = createFallbackWand(state.profile);
+    }
     return state;
   } catch {
     return null;
@@ -142,6 +153,10 @@ export function importSave(jsonString) {
     throw new Error('无效的存档格式');
   }
   state.relationships = migrateRelationships(state.relationships);
+  state.magic = migrateMagic(state);
+  if (!state.profile.wand && state.profile.name) {
+    state.profile.wand = createFallbackWand(state.profile);
+  }
   return state;
 }
 

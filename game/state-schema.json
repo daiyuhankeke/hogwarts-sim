@@ -17,7 +17,22 @@
         "talents": { "type": "array", "items": { "type": "string" } },
         "custom": { "type": "string" },
         "target": { "type": "string" },
-        "tone": { "enum": ["偏甜", "偏日常", "偏小虐"] }
+        "tone": { "enum": ["偏甜", "偏日常", "偏小虐"] },
+        "wand": {
+          "type": "object",
+          "properties": {
+            "wood": { "type": "string" },
+            "core": { "type": "string" },
+            "coreId": { "type": "string" },
+            "length": { "type": "string" },
+            "flexibility": { "type": "string" },
+            "affinity": { "type": "string" },
+            "appearance": { "type": "string" },
+            "color": { "type": "string" },
+            "imageUrl": { "type": ["string", "null"] },
+            "generatedBy": { "type": "string" }
+          }
+        }
       }
     },
     "time": {
@@ -39,6 +54,64 @@
       "type": "object",
       "properties": {
         "mood": { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "magic": {
+      "type": "object",
+      "properties": {
+        "rank": { "type": "string" },
+        "subjects": {
+          "type": "object",
+          "properties": {
+            "charms": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "transfiguration": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "potions": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "dada": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "herbology": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "care": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "divination": { "type": "integer", "minimum": 0, "maximum": 100 },
+            "astronomy": { "type": "integer", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "spells": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "mastery": { "type": "integer", "minimum": 0, "maximum": 100 },
+              "learnedWeek": { "type": ["integer", "null"] }
+            }
+          }
+        },
+        "knowledge": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "mastery": { "type": "integer", "minimum": 0, "maximum": 100 }
+            }
+          }
+        },
+        "notable": { "type": "array", "items": { "type": "string" } },
+        "patronus": {
+          "type": "object",
+          "properties": {
+            "form": { "type": ["string", "null"] },
+            "status": { "type": "string" },
+            "note": { "type": "string" }
+          }
+        },
+        "owls": {
+          "type": "object",
+          "properties": {
+            "status": { "type": ["string", "null"] },
+            "results": { "type": ["object", "null"] },
+            "accidents": { "type": "integer" },
+            "takenYear": { "type": ["integer", "null"] }
+          }
+        }
       }
     },
     "currentTarget": { "type": ["string", "null"] },

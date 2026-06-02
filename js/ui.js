@@ -1,3 +1,6 @@
+import { getSpellById, getMasteryLabel, MAGIC_SUBJECTS, OWL_EXAM_SUBJECTS, OWL_GRADE_NAMES } from './magic-system.js';
+import { renderWandSvg, formatWandSummary } from './wand-system.js';
+
 const HOUSE_COLORS = {
   '格兰芬多': { primary: '#740001', accent: '#d3a625' },
   '斯莱特林': { primary: '#1a472a', accent: '#aaaaaa' },
@@ -25,10 +28,11 @@ export function renderStatusBar(state, statusLine) {
   const stage = rel?.stage ?? '—';
   const affection = rel?.affection ?? 0;
   const mood = state.player.mood;
+  const magicRank = state.magic?.rank || '—';
 
   el.textContent =
     `第${state.time.week}周 ${state.time.weekday} | 霍格沃茨 | ${state.scene.weather} | ` +
-    `场景：${state.scene.location} | 当前男主：${target} | 关系：${stage} | 好感：${affection} | 心情：${mood}`;
+    `场景：${state.scene.location} | 当前男主：${target} | 关系：${stage} | 好感：${affection} | 心情：${mood} | 魔法：${magicRank}`;
 }
 
 export function renderNarrative(text) {
@@ -98,6 +102,96 @@ export function renderEventHints(events, endingHint) {
   if (events?.length) parts.push(`近期：${events.join('、')}`);
   if (endingHint) parts.push(endingHint);
   el.textContent = parts.join(' | ') || '';
+}
+
+export function renderMagicPanel(state) {
+  const el = document.getElementById('magic-panel');
+  if (!el || !state?.magic) return;
+
+  const { magic } = state;
+
+  const rankEl = `<div class="magic-rank"><span class="magic-rank-label">${escapeHtml(magic.rank || '魔法学徒')}</span>` +
+    `<span class="magic-rank-sub">${magic.spells?.length ?? 0} 个咒语 · ${(magic.spells || []).filter((s) => s.mastery >= 80).length} 个精通</span></div>`;
+
+  const subjectsHtml = MAGIC_SUBJECTS.map((sub) => {
+    const val = magic.subjects?.[sub.id] ?? 0;
+    return `<div class="magic-subject"><span class="magic-subject-name">${escapeHtml(sub.name)}</span>` +
+      `<span class="magic-bar"><span style="width:${val}%"></span></span>` +
+      `<span class="magic-subject-num">${val}</span></div>`;
+  }).join('');
+
+  const sortedSpells = [...(magic.spells || [])].sort((a, b) => b.mastery - a.mastery);
+  const spellsHtml = sortedSpells.length
+    ? sortedSpells.map((s) => {
+        const info = getSpellById(s.id);
+        if (!info) return '';
+        const label = getMasteryLabel(s.mastery);
+        const tierClass = info.tier === '禁忌' ? ' spell-forbidden' : info.tier === '高阶' ? ' spell-advanced' : '';
+        return `<div class="spell-item${tierClass}" title="${escapeHtml(info.desc)}">` +
+          `<div class="spell-head"><span class="spell-name">${escapeHtml(info.name)}</span>` +
+          `<span class="spell-tier">${escapeHtml(info.tier)}</span></div>` +
+          `<div class="spell-incantation">${escapeHtml(info.incantation)}</div>` +
+          `<div class="spell-mastery"><span class="magic-bar"><span style="width:${s.mastery}%"></span></span>` +
+          `<span class="spell-mastery-label">${label}</span></div></div>`;
+      }).join('')
+    : '<p class="hint">尚未掌握咒语</p>';
+
+  const knowledge = magic.knowledge || [];
+  const knowledgeHtml = knowledge.length
+    ? knowledge.map((k) => {
+        const info = getSpellById(k.id);
+        if (!info) return '';
+        return `<div class="knowledge-item"><span>${escapeHtml(info.name)}</span>` +
+          `<span class="spell-mastery-label">${getMasteryLabel(k.mastery)}</span></div>`;
+      }).join('')
+    : '';
+
+  const notableHtml = magic.notable?.length
+    ? `<div class="magic-notable">${magic.notable.map((n) => `<span class="magic-tag">${escapeHtml(n)}</span>`).join('')}</div>`
+    : '';
+
+  const wand = state.profile?.wand;
+  const wandHtml = wand
+    ? `<details class="magic-details" open><summary>魔杖</summary>
+        <div class="wand-card">
+          ${wand.imageUrl ? `<img class="wand-image" src="${escapeHtml(wand.imageUrl)}" alt="魔杖">` : renderWandSvg(wand)}
+          <div class="wand-info">
+            <div class="wand-title">${escapeHtml(formatWandSummary(wand))}</div>
+            <div class="wand-flex">${escapeHtml(wand.flexibility)}</div>
+            <p class="wand-appearance">${escapeHtml(wand.appearance || '')}</p>
+            ${wand.affinity ? `<p class="wand-affinity">${escapeHtml(wand.affinity)}</p>` : ''}
+          </div>
+        </div></details>`
+    : '';
+
+  const patronus = magic.patronus;
+  const patronusHtml = patronus
+    ? `<details class="magic-details"${patronus.form ? ' open' : ''}><summary>守护神</summary>
+        <div class="patronus-block">
+          ${patronus.form
+            ? `<span class="patronus-form">${escapeHtml(patronus.form)}</span>`
+            : `<span class="hint">${escapeHtml(patronus.note || '尚未显现')}</span>`}
+        </div></details>`
+    : '';
+
+  const owls = magic.owls;
+  let owlsHtml = '';
+  if (owls?.status === 'preparing') {
+    owlsHtml = `<details class="magic-details"><summary>O.W.L. 考试</summary><p class="hint">五年级期末 · 备考中</p></details>`;
+  } else if (owls?.status === 'completed' && owls.results) {
+    const rows = OWL_EXAM_SUBJECTS.map((sub) => {
+      const g = owls.results[sub.id] || '—';
+      const gradeClass = `owl-${g}`;
+      return `<div class="owl-row"><span>${escapeHtml(sub.name)}</span><span class="owl-grade ${gradeClass}" title="${escapeHtml(OWL_GRADE_NAMES[g] || '')}">${g}</span></div>`;
+    }).join('');
+    const accidentNote = owls.accidents > 0 ? `<p class="hint owl-accident">考试时有 ${owls.accidents} 科发挥失常</p>` : '';
+    owlsHtml = `<details class="magic-details"><summary>O.W.L. 成绩</summary>${rows}${accidentNote}</details>`;
+  }
+
+  el.innerHTML = rankEl + notableHtml + wandHtml + patronusHtml + owlsHtml +
+    `<details class="magic-details" open><summary>学科能力</summary>${subjectsHtml}</details>` +
+    `<details class="magic-details" open><summary>已掌握咒语</summary><div class="spell-list">${spellsHtml}</div></details>` +
+    (knowledgeHtml ? `<details class="magic-details"><summary>魔药与学识</summary>${knowledgeHtml}</details>` : '');
 }
 
 export function setLoading(loading) {

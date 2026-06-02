@@ -2,6 +2,7 @@ import { buildSystemPrompt } from '../lib/loadPrompts.js';
 import { callAI, buildMessages } from '../lib/callAI.js';
 import { extractJson, validateResponse } from '../lib/parseResponse.js';
 import { checkRateLimit, verifyInviteCode } from '../lib/rateLimit.js';
+import { checkCanonicalViolations, buildCanonicalRetryHint } from '../lib/canonicalGuard.js';
 
 function sendJson(res, status, data) {
   if (typeof res.status === 'function' && typeof res.json === 'function') {
@@ -62,31 +63,57 @@ export default async function handler(req, res) {
     }
 
     const systemPrompt = buildSystemPrompt(state, eventContext);
-    const messages = buildMessages(systemPrompt, history, action);
+    let messages = buildMessages(systemPrompt, history, action);
 
-    let raw;
-    try {
-      raw = await callAI(messages);
-    } catch (aiErr) {
-      if (aiErr.message?.includes('response_format')) {
-        raw = await callAIWithoutJsonMode(messages);
-      } else {
-        throw aiErr;
+    let parsed = await requestAI(messages);
+
+    let canon = checkCanonicalViolations(parsed?.narrative);
+    if (!canon.ok) {
+      messages = [
+        ...messages,
+        { role: 'assistant', content: JSON.stringify({ narrative: parsed.narrative?.slice(0, 200) }) },
+        { role: 'user', content: buildCanonicalRetryHint(canon) },
+      ];
+      parsed = await requestAI(messages);
+      canon = checkCanonicalViolations(parsed?.narrative);
+      if (!canon.ok) {
+        console.warn('canonical guard still failing:', canon.id, canon.reason);
       }
-    }
-
-    const parsed = extractJson(raw);
-    const validation = validateResponse(parsed);
-
-    if (!validation.valid) {
-      return sendJson(res, 502, { error: validation.error, raw });
     }
 
     return sendJson(res, 200, parsed);
   } catch (err) {
     console.error('chat error:', err);
+    if (err.status === 502) {
+      return sendJson(res, 502, { error: err.message, raw: err.raw });
+    }
     return sendJson(res, 500, { error: err.message || '服务器错误' });
   }
+}
+
+async function requestAI(messages) {
+  let raw;
+  try {
+    raw = await callAI(messages);
+  } catch (aiErr) {
+    if (aiErr.message?.includes('response_format')) {
+      raw = await callAIWithoutJsonMode(messages);
+    } else {
+      throw aiErr;
+    }
+  }
+
+  const parsed = extractJson(raw);
+  const validation = validateResponse(parsed);
+
+  if (!validation.valid) {
+    const err = new Error(validation.error);
+    err.status = 502;
+    err.raw = raw;
+    throw err;
+  }
+
+  return parsed;
 }
 
 async function callAIWithoutJsonMode(messages) {

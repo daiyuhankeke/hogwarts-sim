@@ -22,6 +22,7 @@ import {
   renderNarrative,
   renderOptions,
   renderRelationships,
+  renderMagicPanel,
   renderEventHints,
   setLoading,
   showError,
@@ -29,12 +30,15 @@ import {
   showScreen,
   populateSaveSlots,
 } from './ui.js';
+import { renderWandPreview } from './wand-ui.js';
 
 let gameState = null;
 let currentSlot = 0;
 let lastResponse = null;
+let pendingWand = null;
 
 const API_URL = '/api/chat';
+const WAND_API_URL = '/api/wand';
 const INVITE_KEY = 'hogwarts-invite-code';
 
 function getInviteCode() {
@@ -93,6 +97,10 @@ function initCharacterFormOptions() {
     }
     targetSelect.value = '先不选';
   }
+
+  document.getElementById('wand-generate-btn')?.addEventListener('click', () => generateWand(false));
+  document.getElementById('wand-generate-image-btn')?.addEventListener('click', () => generateWand(true));
+  document.getElementById('wand-fallback-btn')?.addEventListener('click', () => generateWand(false, true));
 }
 
 function collectTalents(form) {
@@ -110,24 +118,88 @@ function updateTalentSummary() {
   el.textContent = talents.length ? `已选：${talents.join('、')}` : '已选：无';
 }
 
+function collectProfileFromForm(form) {
+  return {
+    name: form.name.value,
+    house: form.house.value,
+    year: Number(form.year.value),
+    bloodStatus: form.bloodStatus.value,
+    appearance: form.appearance.value,
+    talents: collectTalents(form),
+    custom: form.custom.value,
+    target: form.target.value,
+    tone: form.tone.value,
+    saveCedric: form.saveCedric?.checked ?? false,
+    wand: pendingWand,
+  };
+}
+
+async function generateWand(withImage = false, useFallback = false) {
+  const form = document.getElementById('character-form');
+  if (!form) return;
+
+  hideCreateError();
+  const profile = collectProfileFromForm(form);
+  delete profile.wand;
+
+  const btn = document.getElementById('wand-generate-btn');
+  const imgBtn = document.getElementById('wand-generate-image-btn');
+  const fallbackBtn = document.getElementById('wand-fallback-btn');
+  const statusEl = document.getElementById('wand-status');
+  [btn, imgBtn, fallbackBtn].forEach((b) => { if (b) b.disabled = true; });
+  if (statusEl) statusEl.textContent = '奥利凡德正在翻找魔杖盒……';
+
+  try {
+    const res = await fetch(WAND_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profile,
+        inviteCode: getInviteCode(),
+        withImage,
+        useFallback,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '魔杖生成失败');
+
+    pendingWand = data.wand;
+    renderWandPreview(document.getElementById('wand-preview'), pendingWand);
+    if (statusEl) statusEl.textContent = '魔杖已选定！';
+    document.getElementById('start-game-btn').disabled = false;
+  } catch (err) {
+    if (statusEl) statusEl.textContent = '';
+    showCreateError(err.message || '魔杖生成失败，可尝试「快速生成」');
+  } finally {
+    [btn, imgBtn, fallbackBtn].forEach((b) => { if (b) b.disabled = false; });
+  }
+}
+
+function showCreateError(message) {
+  const el = document.getElementById('create-error');
+  if (!el) return;
+  el.textContent = message;
+  el.hidden = false;
+}
+
+function hideCreateError() {
+  const el = document.getElementById('create-error');
+  if (el) el.hidden = true;
+}
+
 function bindCharacterForm() {
   const form = document.getElementById('character-form');
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    hideCreateError();
     hideError();
 
-    const profile = {
-      name: form.name.value,
-      house: form.house.value,
-      year: Number(form.year.value),
-      bloodStatus: form.bloodStatus.value,
-      appearance: form.appearance.value,
-      talents: collectTalents(form),
-      custom: form.custom.value,
-      target: form.target.value,
-      tone: form.tone.value,
-      saveCedric: form.saveCedric?.checked ?? false,
-    };
+    if (!pendingWand) {
+      showCreateError('请先在奥利凡德魔杖店挑选魔杖');
+      return;
+    }
+
+    const profile = collectProfileFromForm(form);
 
     gameState = createInitialState(profile);
     currentSlot = 0;
@@ -146,6 +218,11 @@ function buildStartMessage(profile) {
   msg += `血统：${p.bloodStatus}\n外貌：${p.appearance}\n`;
   const talents = p.talents || [];
   if (talents.length) msg += `特殊才能：${talents.join('、')}\n`;
+  if (p.wand) {
+    msg += `魔杖：${p.wand.wood}，${p.wand.core}，${p.wand.length}，${p.wand.flexibility}\n`;
+    if (p.wand.appearance) msg += `魔杖外观：${p.wand.appearance}\n`;
+    if (p.wand.affinity) msg += `魔杖相性：${p.wand.affinity}\n`;
+  }
   if (p.custom) msg += `自定义：${p.custom}\n`;
   msg += `首要想攻略：${p.target}\n氛围偏好：${p.tone}\n`;
   if (p.saveCedric) msg += `玩家希望在三强赛中拯救塞德里克。\n`;
@@ -173,6 +250,10 @@ function bindGameControls() {
   document.getElementById('new-game-btn')?.addEventListener('click', () => {
     if (confirm('开始新游戏？未保存的进度将丢失。')) {
       gameState = null;
+      pendingWand = null;
+      renderWandPreview(document.getElementById('wand-preview'), null);
+      const startBtn = document.getElementById('start-game-btn');
+      if (startBtn) startBtn.disabled = true;
       showScreen('create-screen');
     }
   });
@@ -245,6 +326,7 @@ function renderGameUI() {
   if (!gameState) return;
   renderStatusBar(gameState);
   renderRelationships(gameState);
+  renderMagicPanel(gameState);
   const ctx = buildEventContext(gameState);
   renderEventHints(getUpcomingEvents(gameState).map((e) => e.label), ctx.endingHint);
   document.getElementById('player-name').textContent = gameState.profile.name;

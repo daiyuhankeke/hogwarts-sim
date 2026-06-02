@@ -103,5 +103,6 @@ export function normalizeProfile(raw) {
     target: raw.target,
     tone: raw.tone,
     saveCedric: raw.saveCedric === true,
+    wand: raw.wand || null,
   };
 }

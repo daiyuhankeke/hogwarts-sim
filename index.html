@@ -23,6 +23,7 @@
       <div class="card">
         <h2>创建你的女巫</h2>
         <p class="hint">性别固定为女性。填写完成后开始你的霍格沃茨生活。</p>
+        <div id="create-error" class="create-error" hidden></div>
         <form id="character-form" class="form-grid">
           <label class="full-width">邀请码（若部署时设置了 INVITE_CODE）
             <input id="invite-code" placeholder="例：hogwarts2026" maxlength="40">
@@ -71,6 +72,17 @@
           <label class="full-width">自定义补充（可选）
             <textarea name="custom" placeholder="其他你想让 DM 知道的信息"></textarea>
           </label>
+          <div class="full-width wand-section">
+            <span class="field-label">魔杖（奥利凡德）*</span>
+            <p class="hint">每位女巫都需要一根属于自己的魔杖。可让奥利凡德用 AI 挑选，并可选生成外观图。</p>
+            <div id="wand-preview"><p class="hint">点击「前往奥利凡德」挑选魔杖</p></div>
+            <div class="wand-actions">
+              <button type="button" id="wand-generate-btn" class="btn btn-secondary btn-small">前往奥利凡德（AI 选杖）</button>
+              <button type="button" id="wand-generate-image-btn" class="btn btn-secondary btn-small">选杖 + 生成外观图</button>
+              <button type="button" id="wand-fallback-btn" class="btn btn-secondary btn-small">快速生成（离线）</button>
+            </div>
+            <p id="wand-status" class="hint"></p>
+          </div>
           <label>首要想攻略谁
             <select name="target" id="target-select">
               <option value="先不选">先不选</option>
@@ -88,7 +100,7 @@
             三强赛时希望拯救塞德里克（改变原著悲剧）
           </label>
           <div class="full-width">
-            <button type="submit" class="btn btn-primary">开始游戏</button>
+            <button type="submit" id="start-game-btn" class="btn btn-primary" disabled>开始游戏</button>
           </div>
         </form>
       </div>
@@ -123,6 +135,10 @@
           </div>
         </div>
         <aside>
+          <div class="card">
+            <h2>魔法能力</h2>
+            <div id="magic-panel"><p class="hint">等待开始……</p></div>
+          </div>
           <div class="card">
             <h2>好感一览</h2>
             <div id="relationships-panel"><p class="hint">尚未建立关系</p></div>
