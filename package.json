@@ -1,0 +1,16 @@
+{
+  "name": "hogwarts-sim",
+  "version": "1.0.0",
+  "description": "霍格沃茨日常模拟器 — AI 文字冒险游戏",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
+}

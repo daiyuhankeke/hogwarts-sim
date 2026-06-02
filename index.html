@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>霍格沃茨日常模拟器</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>霍格沃茨日常模拟器</h1>
+      <div class="subtitle">三分甜 · 七分现实 · 无 BE</div>
+    </div>
+    <div class="player-info" id="header-player-info" hidden>
+      <span id="player-name"></span> · <span id="player-house"></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- 角色创建 -->
+    <section id="create-screen" class="screen">
+      <div class="card">
+        <h2>创建你的女巫</h2>
+        <p class="hint">性别固定为女性。填写完成后开始你的霍格沃茨生活。</p>
+        <form id="character-form" class="form-grid">
+          <label class="full-width">邀请码（若部署时设置了 INVITE_CODE）
+            <input id="invite-code" placeholder="例：hogwarts2026" maxlength="40">
+          </label>
+          <label>姓名 *
+            <input name="name" required placeholder="例：艾拉·陈" maxlength="20">
+          </label>
+          <label>学院 *
+            <select name="house" required>
+              <option value="格兰芬多">格兰芬多</option>
+              <option value="斯莱特林">斯莱特林</option>
+              <option value="拉文克劳">拉文克劳</option>
+              <option value="赫奇帕奇">赫奇帕奇</option>
+            </select>
+          </label>
+          <label>年级 *
+            <select name="year" required>
+              <option value="1">1 年级（新生入学）</option>
+              <option value="2">2 年级</option>
+              <option value="3">3 年级</option>
+              <option value="4">4 年级（可参加舞会/观赛三强赛）</option>
+              <option value="5">5 年级</option>
+              <option value="6">6 年级（可作勇士候选人）</option>
+              <option value="7">7 年级</option>
+            </select>
+          </label>
+          <label>血统 *
+            <select name="bloodStatus" required>
+              <option value="纯血">纯血</option>
+              <option value="混血">混血</option>
+              <option value="麻瓜出身">麻瓜出身</option>
+            </select>
+          </label>
+          <label class="full-width">外貌特征 *
+            <input name="appearance" required placeholder="例：深棕卷发，琥珀色眼睛，左手腕有小疤" maxlength="80">
+          </label>
+          <label class="full-width">特殊才能（可选）
+            <input name="talent" placeholder="例：魁地奇尖子 / 魔药天才" maxlength="60">
+          </label>
+          <label class="full-width">自定义补充（可选）
+            <textarea name="custom" placeholder="其他你想让 DM 知道的信息"></textarea>
+          </label>
+          <label>首要想攻略谁
+            <select name="target">
+              <option value="先不选">先不选</option>
+              <option value="哈利">哈利</option>
+              <option value="德拉科">德拉科</option>
+              <option value="西奥多">西奥多</option>
+              <option value="布雷斯">布雷斯</option>
+              <option value="弗雷德">弗雷德</option>
+              <option value="乔治">乔治</option>
+              <option value="塞德里克">塞德里克</option>
+              <option value="奥利弗·伍德">奥利弗·伍德</option>
+              <option value="双子夹心">双子夹心</option>
+            </select>
+          </label>
+          <label>初始氛围偏好
+            <select name="tone">
+              <option value="偏甜">偏甜</option>
+              <option value="偏日常" selected>偏日常</option>
+              <option value="偏小虐">偏小虐</option>
+            </select>
+          </label>
+          <label class="full-width checkbox-label">
+            <input type="checkbox" name="saveCedric">
+            三强赛时希望拯救塞德里克（改变原著悲剧）
+          </label>
+          <div class="full-width">
+            <button type="submit" class="btn btn-primary">开始游戏</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- 游戏主界面 -->
+    <section id="game-screen" class="screen" hidden>
+      <div class="toolbar">
+        <select id="save-slot-select" aria-label="存档槽"></select>
+        <button type="button" id="save-btn" class="btn btn-secondary btn-small">保存</button>
+        <button type="button" id="load-btn" class="btn btn-secondary btn-small">读档</button>
+        <button type="button" id="export-btn" class="btn btn-secondary btn-small">导出存档</button>
+        <button type="button" id="import-btn" class="btn btn-secondary btn-small">导入存档</button>
+        <input type="file" id="import-file" accept=".json" hidden>
+        <button type="button" id="retry-btn" class="btn btn-secondary btn-small">重试本回合</button>
+        <button type="button" id="new-game-btn" class="btn btn-secondary btn-small">新游戏</button>
+      </div>
+
+      <div id="error-banner" hidden></div>
+      <div id="ending-banner" hidden></div>
+
+      <div class="sidebar-grid">
+        <div>
+          <div class="card">
+            <div id="status-bar">等待开始……</div>
+            <div id="narrative"><p class="placeholder">故事即将开始……</p></div>
+            <div id="options"></div>
+            <div class="custom-row">
+              <input id="custom-action" type="text" placeholder="F — 自定义行动（直接描述你想做什么）" maxlength="200">
+              <button type="button" id="custom-submit" class="btn btn-primary btn-small">执行</button>
+            </div>
+          </div>
+        </div>
+        <aside>
+          <div class="card">
+            <h2>好感一览</h2>
+            <div id="relationships-panel"><p class="hint">尚未建立关系</p></div>
+            <div id="event-hints"></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <div id="loading" hidden>
+    <div class="loader-box">
+      <div class="spinner"></div>
+      <p>猫头鹰正在传递消息……</p>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+  <script>
+    document.getElementById('game-screen')?.addEventListener('transitionend', () => {});
+    const obs = new MutationObserver(() => {
+      const info = document.getElementById('header-player-info');
+      const game = document.getElementById('game-screen');
+      if (info && game) info.hidden = game.hidden;
+    });
+    obs.observe(document.getElementById('game-screen'), { attributes: true, attributeFilter: ['hidden'] });
+  </script>
+</body>
+</html>

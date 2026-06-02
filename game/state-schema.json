@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HogwartsSimGameState",
+  "type": "object",
+  "required": ["profile", "time", "scene", "player", "relationships", "flags", "summary", "npcYears", "turnCount", "history"],
+  "properties": {
+    "profile": {
+      "type": "object",
+      "required": ["name", "house", "year", "bloodStatus", "appearance", "target", "tone"],
+      "properties": {
+        "name": { "type": "string" },
+        "house": { "enum": ["格兰芬多", "斯莱特林", "拉文克劳", "赫奇帕奇"] },
+        "year": { "type": "integer", "minimum": 1, "maximum": 7 },
+        "bloodStatus": { "enum": ["纯血", "混血", "麻瓜出身"] },
+        "appearance": { "type": "string" },
+        "talent": { "type": "string" },
+        "custom": { "type": "string" },
+        "target": { "type": "string" },
+        "tone": { "enum": ["偏甜", "偏日常", "偏小虐"] }
+      }
+    },
+    "time": {
+      "type": "object",
+      "properties": {
+        "week": { "type": "integer", "minimum": 1 },
+        "weekday": { "type": "string" },
+        "season": { "enum": ["秋", "冬", "春", "夏"] }
+      }
+    },
+    "scene": {
+      "type": "object",
+      "properties": {
+        "location": { "type": "string" },
+        "weather": { "type": "string" }
+      }
+    },
+    "player": {
+      "type": "object",
+      "properties": {
+        "mood": { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "currentTarget": { "type": ["string", "null"] },
+    "relationships": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "stage": { "type": "string" },
+          "affection": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    "npcYears": {
+      "type": "object",
+      "description": "各男主当前年级，由玩家年级自动计算"
+    },
+    "flags": {
+      "type": "object",
+      "properties": {
+        "triwizardYear": { "type": "boolean" },
+        "triwizardRole": { "enum": ["none", "spectator", "champion", "saved", "rescuer"] },
+        "triwizardParticipant": { "type": "boolean" },
+        "yuleBallPartner": { "type": ["string", "null"] },
+        "saveCedric": { "type": "boolean" },
+        "eventsTriggered": { "type": "array", "items": { "type": "string" } },
+        "ending": { "type": ["string", "null"] }
+      }
+    },
+    "summary": { "type": "string" },
+    "turnCount": { "type": "integer", "minimum": 0 },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "turn": { "type": "integer" },
+          "action": { "type": "string" },
+          "narrative": { "type": "string" }
+        }
+      }
+    },
+    "lastAction": { "type": "string" }
+  }
+}
