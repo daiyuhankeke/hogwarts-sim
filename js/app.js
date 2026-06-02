@@ -255,7 +255,9 @@ async function handleOptionSelect(option, customDetail) {
   hideError();
   let actionText = `${option.id}. ${option.text}`;
   if (customDetail) actionText = `F. 自定义行动：${customDetail}`;
-  if (option.id === 'C' && gameState) {
+
+  // 仅当选项内容明确是霍格莫德时才校验（不能按字母 C 硬编码，AI 每回合选项文案会变）
+  if (gameState && isHogsmeadeOption(option)) {
     const ctx = buildEventContext(gameState);
     if (!ctx.hogsmeadeAvailable) {
       showError('霍格莫德仅周六开放（三年级及以上）');
@@ -263,6 +265,10 @@ async function handleOptionSelect(option, customDetail) {
     }
   }
   await sendTurn(actionText, actionText);
+}
+
+function isHogsmeadeOption(option) {
+  return /霍格莫德|hogsmeade/i.test(option.text || '');
 }
 
 async function sendTurn(actionLabel, userMessage, isRetry = false) {

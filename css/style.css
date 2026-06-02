@@ -284,11 +284,32 @@ textarea {
   gap: 0.5rem;
   align-items: center;
   margin-bottom: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--bg-parchment);
+  border: 2px solid var(--border-gold);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px var(--shadow);
 }
 
 .toolbar select {
-  padding: 0.35rem;
+  padding: 0.4rem 0.55rem;
   font-size: 0.85rem;
+  min-width: 9rem;
+  background: #fffef8;
+  border: 1px solid #c4a35a;
+  color: var(--text-main);
+}
+
+.toolbar .btn-secondary {
+  background: #fffef8;
+  color: var(--text-main);
+  border: 1px solid #c4a35a;
+}
+
+.toolbar .btn-secondary:hover {
+  background: #fff8e7;
+  border-color: var(--house-accent);
+  color: var(--house-primary);
 }
 
 #error-banner,

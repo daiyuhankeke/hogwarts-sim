@@ -118,6 +118,7 @@ export function showError(message) {
   if (!el) return;
   el.textContent = message;
   el.hidden = false;
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 export function hideError() {
