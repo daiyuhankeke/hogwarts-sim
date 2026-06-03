@@ -25,6 +25,7 @@ import {
   renderRelationships,
   renderMagicPanel,
   renderProgressPanel,
+  renderTimetablePanel,
   renderEventHints,
   setLoading,
   showError,
@@ -37,6 +38,7 @@ import {
 import { renderWandPreview } from './wand-ui.js';
 import { applySceneVisual, clearSceneVisual } from './scene-visuals.js';
 import { inferMagicGains, applyInferredMagicGains } from './magic-inference.js';
+import { formatTodayClassHint } from './timetable.js';
 import { toggleAudio, isAudioEnabled, stopAmbient } from './ambient-audio.js';
 
 let gameState = null;
@@ -271,7 +273,7 @@ function buildStartMessage(profile) {
   msg += `首要想攻略：${p.target}\n氛围偏好：${p.tone}\n`;
   if (p.saveCedric) msg += `玩家希望在三强赛中拯救塞德里克。\n`;
   const hook = getPlaythroughHook(p.year);
-  msg += `本局主线：${hook.label}（${hook.hint}）\n`;
+  msg += `本局原著主线：${hook.label}（${hook.hint}）。须与哈利·波特同期事件对齐，哈利为剧情核心，玩家为参与者。\n`;
   const clubs = getClubNames(p.clubs || []);
   if (clubs.length) msg += `参加社团：${clubs.join('、')}\n`;
   return msg;
@@ -378,6 +380,7 @@ function renderGameUI() {
   renderRelationships(gameState);
   renderMagicPanel(gameState);
   renderProgressPanel(gameState);
+  renderTimetablePanel(gameState);
   const ctx = buildEventContext(gameState);
   renderEventHints(getUpcomingEvents(gameState).map((e) => e.label), ctx.endingHint);
   document.getElementById('player-name').textContent = gameState.profile.name;
@@ -499,12 +502,13 @@ function bindInviteCode() {
 }
 
 function getDefaultOptions() {
+  const classHint = gameState ? formatTodayClassHint(gameState) : '魔药/变形/魔咒…';
   return [
     { id: 'A', text: '去图书馆复习（可能遇到某男主）' },
     { id: 'B', text: '去公共休息室休息（可能触发闲聊）' },
     { id: 'C', text: '去霍格莫德（周六限定）' },
     { id: 'D', text: '去魁地奇球场看训练' },
-    { id: 'E', text: '去上课（魔药/变形/魔咒/占卜/神奇生物）' },
+    { id: 'E', text: `去上课（今日：${classHint}）` },
     { id: 'F', text: '自定义行动' },
   ];
 }

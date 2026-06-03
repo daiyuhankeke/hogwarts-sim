@@ -56,11 +56,16 @@ const PREP_EVENTS = [
 ];
 
 export function getPlaythroughHook(year) {
-  if (year === 1) return { id: 'first_year', label: '新生入学', hint: '分院、第一堂魔法课、新朋友' };
-  if (year === 4) return { id: 'triwizard_witness', label: '三强赛之年', hint: '火焰杯、圣诞舞会、观赛与社交' };
-  if (year === 5) return { id: 'owl_year', label: 'O.W.L. 之年', hint: '备考压力、乌姆里奇、D.A.' };
-  if (year === 7) return { id: 'newt_year', label: 'N.E.W.T. 冲刺', hint: '毕业前最后学年' };
-  return { id: 'daily', label: '霍格沃茨日常', hint: '学业、恋爱与学院生活' };
+  const hooks = {
+    1: { id: 'canon_y1', label: '魔法石之年', hint: '分院、魁地奇、万圣节巨怪、魔法石闯关' },
+    2: { id: 'canon_y2', label: '密室之年', hint: '密室传说、决斗俱乐部、石化、里德尔日记' },
+    3: { id: 'canon_y3', label: '阿兹卡班之年', hint: '摄魂怪、守护神、活点地图、小天狼星真相' },
+    4: { id: 'canon_y4', label: '火焰杯之年', hint: '三强赛、圣诞舞会、迷宫、伏地魔复活' },
+    5: { id: 'canon_y5', label: '凤凰社之年', hint: '乌姆里奇、D.A.、O.W.L.、神秘事务司' },
+    6: { id: 'canon_y6', label: '混血王子之年', hint: '魂器线索、魔药笔记、天文塔' },
+    7: { id: 'canon_y7', label: '死亡圣器之年', hint: '卡罗统治、霍格沃茨大战' },
+  };
+  return hooks[year] || { id: 'daily', label: '霍格沃茨日常', hint: '学业、恋爱与学院生活' };
 }
 
 export function createInitialProgression(profile) {

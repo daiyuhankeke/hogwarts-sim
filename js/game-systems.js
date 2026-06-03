@@ -1,6 +1,8 @@
 import { getStageFromAffection, ROMANCE_TARGETS } from './state.js';
 import { getNpcScheduleContext } from './npc-schedules.js';
 import { getPlaythroughHook, getClubNames, getGossipLabel } from './progression.js';
+import { getTimetableContext } from './timetable.js';
+import { getCanonicalPlotContext, getCanonEventsForCalendar } from './canonical-storyline.js';
 
 const EVENT_CALENDAR = [
   { id: 'opening_feast', week: 1, label: '开学宴会' },
@@ -21,11 +23,13 @@ const EVENT_CALENDAR = [
 export function getUpcomingEvents(state) {
   const week = state.time.week;
   const year = state.profile.year;
-  return EVENT_CALENDAR.filter((ev) => {
+  const generic = EVENT_CALENDAR.filter((ev) => {
     if (ev.minYear && year < ev.minYear) return false;
     if (ev.requiresFlag === 'triwizardYear' && !state.flags.triwizardYear) return false;
     return ev.week >= week && ev.week <= week + 4;
   });
+  const canon = getCanonEventsForCalendar(state);
+  return [...canon, ...generic].sort((a, b) => a.week - b.week);
 }
 
 export function checkEnding(state) {
@@ -93,6 +97,8 @@ export function buildEventContext(state) {
   const hook = getPlaythroughHook(state.profile?.year ?? 1);
   const npcSchedule = getNpcScheduleContext(state);
   const prog = state.progression;
+  const timetable = getTimetableContext(state);
+  const canonPlot = getCanonicalPlotContext(state);
 
   return {
     upcomingEvents: upcoming.map((e) => e.label),
@@ -101,6 +107,8 @@ export function buildEventContext(state) {
     triwizardEligible: canBeTriwizardChampion(state),
     playthroughHook: hook,
     npcSchedule,
+    timetable,
+    canonPlot,
     housePoints: prog?.housePoints ?? 0,
     gossipLevel: prog?.gossip?.level ?? 0,
     gossipLabel: getGossipLabel(prog?.gossip?.level ?? 0),
@@ -109,7 +117,7 @@ export function buildEventContext(state) {
     examWeek: prog?.exams?.active ?? false,
     patronusProgress: prog?.patronusCeremony?.progress ?? 0,
     wandAffinity: prog?.wandNotes || state.profile?.wand?.affinity || '',
-    dmReminder: '每 5 回合须推进至少一项：学业/感情/学院事件/魔法/社团。大事件准备期请给准备阶段选项。',
+    dmReminder: '每 5 回合须推进至少一项：学业/感情/学院事件/魔法/社团/原著主线。大事件准备期请给准备阶段选项。主线须对齐 canonPlot。',
   };
 }
 

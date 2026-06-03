@@ -140,7 +140,16 @@
         "yuleBallPartner": { "type": ["string", "null"] },
         "saveCedric": { "type": "boolean" },
         "eventsTriggered": { "type": "array", "items": { "type": "string" } },
-        "ending": { "type": ["string", "null"] }
+        "ending": { "type": ["string", "null"] },
+        "canonPlot": {
+          "type": "object",
+          "properties": {
+            "year": { "type": "integer" },
+            "title": { "type": "string" },
+            "completed": { "type": "array", "items": { "type": "string" } },
+            "divergences": { "type": "array", "items": { "type": "string" } }
+          }
+        }
       }
     },
     "summary": { "type": "string" },
@@ -157,6 +166,17 @@
       }
     },
     "lastAction": { "type": "string" },
+    "timetable": {
+      "type": "object",
+      "properties": {
+        "year": { "type": "integer" },
+        "electives": { "type": "array", "items": { "type": "string" } },
+        "schedule": { "type": "object" },
+        "evening": { "type": "array" },
+        "swaps": { "type": "array" },
+        "notes": { "type": "string" }
+      }
+    },
     "progression": {
       "type": "object",
       "properties": {

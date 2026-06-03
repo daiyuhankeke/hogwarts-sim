@@ -1,6 +1,8 @@
 import { getSpellById, getMasteryLabel, MAGIC_SUBJECTS, OWL_EXAM_SUBJECTS, OWL_GRADE_NAMES } from './magic-system.js';
 import { renderWandSvg, formatWandSummary } from './wand-system.js';
 import { ACHIEVEMENTS, getClubNames, getGossipLabel, getPlaythroughHook } from './progression.js';
+import { getCanonicalPlotContext } from './canonical-storyline.js';
+import { WEEKDAYS, PERIOD_LABELS, getTodayClasses, getTodayEveningClasses, SUBJECT_CATALOG } from './timetable.js';
 
 const HOUSE_COLORS = {
   '格兰芬多': { primary: '#740001', accent: '#d3a625' },
@@ -251,6 +253,21 @@ export function renderProgressPanel(state) {
   const house = state.profile?.house ?? '';
   const hook = getPlaythroughHook(state.profile?.year ?? 1);
   const gossip = getGossipLabel(p.gossip?.level ?? 0);
+  const canon = getCanonicalPlotContext(state);
+
+  let canonHtml = '';
+  if (canon.dueBeat) {
+    canonHtml = `<div class="canon-banner canon-due">📖 主线 · ${escapeHtml(canon.dueBeat.label)}</div>` +
+      `<p class="canon-summary">${escapeHtml(canon.dueBeat.summary.slice(0, 80))}${canon.dueBeat.summary.length > 80 ? '…' : ''}</p>`;
+  } else if (canon.nextMandatory) {
+    canonHtml = `<div class="canon-banner">📖 ${escapeHtml(canon.title)}</div>` +
+      `<p class="hint canon-next">下一节点（第${canon.nextMandatory.week ?? '?'}周）：${escapeHtml(canon.nextMandatory.label)}</p>`;
+  } else {
+    canonHtml = `<div class="canon-banner">📖 ${escapeHtml(canon.title)}</div>`;
+  }
+  if (canon.upcomingBeats?.length) {
+    canonHtml += `<p class="hint canon-upcoming">近期主线：${canon.upcomingBeats.map((b) => `W${b.week} ${escapeHtml(b.label)}`).join(' · ')}</p>`;
+  }
 
   let prepHtml = '';
   if (p.eventPrep?.active) {
@@ -286,6 +303,7 @@ export function renderProgressPanel(state) {
   const rumors = (p.gossip?.rumors || []).slice(0, 2).map((r) => `<p class="gossip-rumor">${escapeHtml(r)}</p>`).join('');
 
   el.innerHTML =
+    canonHtml +
     `<div class="prog-hook">${escapeHtml(hook.label)} · ${escapeHtml(hook.hint)}</div>` +
     `<div class="house-points">${escapeHtml(house)} +${p.housePoints}` +
     (p.housePenalties ? ` · 警告 ${p.housePenalties}` : '') +
@@ -296,6 +314,66 @@ export function renderProgressPanel(state) {
     rumors +
     `<details class="magic-details"><summary>回忆 (${(p.memories || []).length})</summary>${memHtml}</details>` +
     `<details class="magic-details"><summary>成就 (${achUnlocked.size})</summary><div class="magic-notable">${achHtml}</div></details>`;
+}
+
+export function renderTimetablePanel(state) {
+  const el = document.getElementById('timetable-panel');
+  if (!el || !state?.timetable) return;
+
+  const tt = state.timetable;
+  const today = state.time?.weekday ?? '周一';
+  const todayClasses = getTodayClasses(state);
+  const evening = getTodayEveningClasses(state);
+
+  let todayHtml = '';
+  if (today === '周六' || today === '周日') {
+    todayHtml = `<p class="hint">${today} · 无固定课时${today === '周六' && state.profile?.year >= 3 ? '（三年级以上可去霍格莫德）' : ''}</p>`;
+  } else if (todayClasses.length) {
+    todayHtml = todayClasses.map((c) => {
+      const isNow = c.subjectId !== 'free' && c.subjectId !== 'study';
+      return `<div class="tt-today-row${isNow ? '' : ' tt-muted'}">` +
+        `<span class="tt-time">${escapeHtml(c.time)}</span>` +
+        `<span class="tt-subject">${escapeHtml(c.name)}</span>` +
+        `<span class="tt-teacher">${escapeHtml(c.teacher)}</span></div>`;
+    }).join('');
+    if (evening.length) {
+      todayHtml += evening.map((c) =>
+        `<div class="tt-today-row tt-evening"><span class="tt-time">${escapeHtml(c.time)}</span>` +
+        `<span class="tt-subject">${escapeHtml(c.name)}</span>` +
+        `<span class="tt-teacher">${escapeHtml(c.teacher)}</span></div>`
+      ).join('');
+    }
+  }
+
+  const schoolDays = WEEKDAYS.slice(0, 5);
+  const periods = ['am1', 'am2', 'pm1', 'pm2'];
+
+  const gridHead = `<div class="tt-grid"><div class="tt-corner"></div>` +
+    schoolDays.map((d) =>
+      `<div class="tt-day-head${d === today ? ' tt-today-col' : ''}">${escapeHtml(d.replace('周', ''))}</div>`
+    ).join('');
+
+  const gridRows = periods.map((period) => {
+    const time = PERIOD_LABELS[period];
+    const cells = schoolDays.map((day) => {
+      const cls = (tt.schedule[day] || []).find((c) => c.period === period);
+      if (!cls) return `<div class="tt-cell"></div>`;
+      const short = cls.name.length > 4 ? cls.name.slice(0, 4) : cls.name;
+      const title = `${cls.name} · ${cls.teacher} · ${cls.room}`;
+      return `<div class="tt-cell${day === today ? ' tt-today-col' : ''}" title="${escapeHtml(title)}">${escapeHtml(short)}</div>`;
+    }).join('');
+    return `<div class="tt-period-label">${escapeHtml(time)}</div>${cells}`;
+  }).join('');
+
+  const electiveNote = tt.electives?.length
+    ? `<p class="hint tt-note">选修：${tt.electives.map((id) => escapeHtml(SUBJECT_CATALOG[id]?.name || id)).join('、')}${tt.notes ? ` · ${escapeHtml(tt.notes)}` : ''}</p>`
+    : tt.notes ? `<p class="hint tt-note">${escapeHtml(tt.notes)}</p>` : '';
+
+  el.innerHTML =
+    `<details class="magic-details" open><summary>今日 · ${escapeHtml(today)}</summary>` +
+    `<div class="tt-today">${todayHtml || '<p class="hint">无课</p>'}</div></details>` +
+    `<details class="magic-details"><summary>本周课表</summary>` +
+    gridHead + gridRows + `</div>${electiveNote}</details>`;
 }
 
 export function showMilestoneToast(milestones) {

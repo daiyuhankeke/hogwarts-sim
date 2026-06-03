@@ -7,6 +7,8 @@ import {
 import { createInitialMagic, migrateMagic, mergeMagicUpdate } from './magic-system.js';
 import { createFallbackWand } from './wand-system.js';
 import { createInitialProgression, migrateProgression, mergeProgressionUpdate, processAfterTurn } from './progression.js';
+import { createTimetable, migrateTimetable, mergeTimetableUpdate } from './timetable.js';
+import { migrateCanonPlot, mergeCanonPlotUpdate } from './canonical-storyline.js';
 
 const STORAGE_KEY = 'hogwarts-sim-save';
 const SLOT_PREFIX = 'hogwarts-sim-slot-';
@@ -66,6 +68,7 @@ export function createInitialState(rawProfile) {
       saveCedric: profile.saveCedric === true,
       eventsTriggered: [],
       ending: null,
+      canonPlot: migrateCanonPlot({ profile, flags: {} }),
     },
     summary: year === 1
       ? `${profile.name} 收到录取通知书，即将开启霍格沃茨第一年。`
@@ -75,6 +78,7 @@ export function createInitialState(rawProfile) {
     lastAction: null,
     magic: createInitialMagic(profile),
     progression: createInitialProgression(profile),
+    timetable: createTimetable(profile),
   };
 }
 
@@ -108,6 +112,12 @@ export function mergeStateUpdate(state, update) {
         ...new Set([...(next.flags.eventsTriggered || []), ...update.flags.eventsTriggered]),
       ];
     }
+    if (update.flags.canonPlot) {
+      next.flags.canonPlot = mergeCanonPlotUpdate(
+        next.flags.canonPlot || migrateCanonPlot(next),
+        update.flags.canonPlot
+      );
+    }
   }
 
   if (update.magic) {
@@ -116,6 +126,10 @@ export function mergeStateUpdate(state, update) {
 
   if (update.progression) {
     next.progression = mergeProgressionUpdate(next.progression || migrateProgression(next), update.progression);
+  }
+
+  if (update.timetable) {
+    next.timetable = mergeTimetableUpdate(next.timetable || migrateTimetable(next), update.timetable);
   }
 
   return next;
@@ -141,6 +155,9 @@ export function loadGame(slot = 0) {
     }
     state.magic = migrateMagic(state);
     state.progression = migrateProgression(state);
+    state.timetable = migrateTimetable(state);
+    if (!state.flags) state.flags = {};
+    state.flags.canonPlot = migrateCanonPlot(state);
     if (!state.profile.wand && state.profile.name) {
       state.profile.wand = createFallbackWand(state.profile);
     }
@@ -162,9 +179,12 @@ export function importSave(jsonString) {
   state.relationships = migrateRelationships(state.relationships);
   state.magic = migrateMagic(state);
   state.progression = migrateProgression(state);
+  state.timetable = migrateTimetable(state);
   if (!state.profile.wand && state.profile.name) {
     state.profile.wand = createFallbackWand(state.profile);
   }
+  if (!state.flags) state.flags = {};
+  state.flags.canonPlot = migrateCanonPlot(state);
   return state;
 }
 
