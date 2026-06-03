@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="gr-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6a98c8"/>
+      <stop offset="100%" stop-color="#a8c8a0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#gr-sky)"/>
+  <!-- hills -->
+  <path d="M0 600 Q400 450 800 550 Q1200 650 1600 500 L1600 900 L0 900 Z" fill="#3a6a3a"/>
+  <path d="M0 650 Q500 520 1000 620 Q1300 680 1600 580 L1600 900 L0 900 Z" fill="#2a5a2a"/>
+  <!-- forbidden forest -->
+  <g fill="#0a2010" opacity="0.85">
+    <ellipse cx="200" cy="520" rx="120" ry="180"/>
+    <ellipse cx="350" cy="500" rx="100" ry="160"/>
+    <ellipse cx="1300" cy="510" rx="130" ry="170"/>
+    <ellipse cx="1450" cy="530" rx="110" ry="150"/>
+  </g>
+  <!-- lake shimmer -->
+  <ellipse cx="800" cy="750" rx="500" ry="40" fill="#4a8090" opacity="0.5"/>
+</svg>

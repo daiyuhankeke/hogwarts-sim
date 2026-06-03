@@ -83,6 +83,11 @@
             </div>
             <p id="wand-status" class="hint"></p>
           </div>
+          <div class="full-width talent-section">
+            <span class="field-label">社团（最多 3 个，可多选）</span>
+            <div id="club-presets" class="talent-grid"></div>
+            <p class="hint">社团活动会提升对应魔法能力，并在剧情中定期出现</p>
+          </div>
           <label>首要想攻略谁
             <select name="target" id="target-select">
               <option value="先不选">先不选</option>
@@ -108,6 +113,12 @@
 
     <!-- 游戏主界面 -->
     <section id="game-screen" class="screen" hidden>
+      <div id="scene-backdrop" class="scene-backdrop scene-none" aria-hidden="true">
+        <div class="scene-backdrop-image"></div>
+        <div class="scene-backdrop-fx"></div>
+        <span id="scene-label" class="scene-label"></span>
+      </div>
+      <div class="game-scene-content">
       <div class="toolbar">
         <select id="save-slot-select" aria-label="存档槽"></select>
         <button type="button" id="save-btn" class="btn btn-secondary btn-small">保存</button>
@@ -116,10 +127,12 @@
         <button type="button" id="import-btn" class="btn btn-secondary btn-small">导入存档</button>
         <input type="file" id="import-file" accept=".json" hidden>
         <button type="button" id="retry-btn" class="btn btn-secondary btn-small">重试本回合</button>
+        <button type="button" id="audio-toggle-btn" class="btn btn-secondary btn-small">🔇 环境音</button>
         <button type="button" id="new-game-btn" class="btn btn-secondary btn-small">新游戏</button>
       </div>
 
       <div id="error-banner" hidden></div>
+      <div id="magic-gain-toast" class="magic-gain-toast" hidden></div>
       <div id="ending-banner" hidden></div>
 
       <div class="sidebar-grid">
@@ -136,6 +149,10 @@
         </div>
         <aside>
           <div class="card">
+            <h2>霍格沃茨生活</h2>
+            <div id="progress-panel"><p class="hint">等待开始……</p></div>
+          </div>
+          <div class="card">
             <h2>魔法能力</h2>
             <div id="magic-panel"><p class="hint">等待开始……</p></div>
           </div>
@@ -145,6 +162,7 @@
             <div id="event-hints"></div>
           </div>
         </aside>
+      </div>
       </div>
     </section>
   </main>

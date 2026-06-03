@@ -15,6 +15,7 @@ import {
   TALENT_PRESETS,
   TARGET_GROUPS,
 } from './character-config.js';
+import { CLUB_OPTIONS, MAX_CLUBS, detectMilestones, getPlaythroughHook, getClubNames, processAfterTurn } from './progression.js';
 import { clampRelationships, buildEventContext, getUpcomingEvents, checkEnding } from './game-systems.js';
 import {
   applyHouseTheme,
@@ -23,14 +24,20 @@ import {
   renderOptions,
   renderRelationships,
   renderMagicPanel,
+  renderProgressPanel,
   renderEventHints,
   setLoading,
   showError,
   hideError,
   showScreen,
   populateSaveSlots,
+  showMagicGains,
+  showMilestoneToast,
 } from './ui.js';
 import { renderWandPreview } from './wand-ui.js';
+import { applySceneVisual, clearSceneVisual } from './scene-visuals.js';
+import { inferMagicGains, applyInferredMagicGains } from './magic-inference.js';
+import { toggleAudio, isAudioEnabled, stopAmbient } from './ambient-audio.js';
 
 let gameState = null;
 let currentSlot = 0;
@@ -66,6 +73,7 @@ function init() {
       renderOptions(getDefaultOptions(), handleOptionSelect);
     }
   } else {
+    clearSceneVisual();
     showScreen('create-screen');
   }
 }
@@ -101,6 +109,41 @@ function initCharacterFormOptions() {
   document.getElementById('wand-generate-btn')?.addEventListener('click', () => generateWand(false));
   document.getElementById('wand-generate-image-btn')?.addEventListener('click', () => generateWand(true));
   document.getElementById('wand-fallback-btn')?.addEventListener('click', () => generateWand(false, true));
+
+  const clubContainer = document.getElementById('club-presets');
+  if (clubContainer) {
+    clubContainer.innerHTML = CLUB_OPTIONS.map(
+      (c) =>
+        `<label class="talent-chip" title="${c.desc}"><input type="checkbox" name="clubPreset" value="${c.id}"><span>${c.name}</span></label>`
+    ).join('');
+    clubContainer.addEventListener('change', limitClubSelection);
+  }
+
+  document.getElementById('audio-toggle-btn')?.addEventListener('click', () => {
+    const on = toggleAudio();
+    const btn = document.getElementById('audio-toggle-btn');
+    if (btn) btn.textContent = on ? '🔊 环境音' : '🔇 环境音';
+    if (on && gameState) applySceneVisual(gameState);
+    else stopAmbient();
+  });
+  updateAudioButton();
+}
+
+function limitClubSelection(e) {
+  const checked = [...document.querySelectorAll('input[name="clubPreset"]:checked')];
+  if (checked.length > MAX_CLUBS) {
+    e.target.checked = false;
+    showCreateError(`最多选择 ${MAX_CLUBS} 个社团`);
+  }
+}
+
+function collectClubs(form) {
+  return [...form.querySelectorAll('input[name="clubPreset"]:checked')].map((el) => el.value).slice(0, MAX_CLUBS);
+}
+
+function updateAudioButton() {
+  const btn = document.getElementById('audio-toggle-btn');
+  if (btn) btn.textContent = isAudioEnabled() ? '🔊 环境音' : '🔇 环境音';
 }
 
 function collectTalents(form) {
@@ -130,6 +173,7 @@ function collectProfileFromForm(form) {
     target: form.target.value,
     tone: form.tone.value,
     saveCedric: form.saveCedric?.checked ?? false,
+    clubs: collectClubs(form),
     wand: pendingWand,
   };
 }
@@ -226,6 +270,10 @@ function buildStartMessage(profile) {
   if (p.custom) msg += `自定义：${p.custom}\n`;
   msg += `首要想攻略：${p.target}\n氛围偏好：${p.tone}\n`;
   if (p.saveCedric) msg += `玩家希望在三强赛中拯救塞德里克。\n`;
+  const hook = getPlaythroughHook(p.year);
+  msg += `本局主线：${hook.label}（${hook.hint}）\n`;
+  const clubs = getClubNames(p.clubs || []);
+  if (clubs.length) msg += `参加社团：${clubs.join('、')}\n`;
   return msg;
 }
 
@@ -254,6 +302,7 @@ function bindGameControls() {
       renderWandPreview(document.getElementById('wand-preview'), null);
       const startBtn = document.getElementById('start-game-btn');
       if (startBtn) startBtn.disabled = true;
+      clearSceneVisual();
       showScreen('create-screen');
     }
   });
@@ -324,9 +373,11 @@ function bindSaveControls() {
 
 function renderGameUI() {
   if (!gameState) return;
+  applySceneVisual(gameState);
   renderStatusBar(gameState);
   renderRelationships(gameState);
   renderMagicPanel(gameState);
+  renderProgressPanel(gameState);
   const ctx = buildEventContext(gameState);
   renderEventHints(getUpcomingEvents(gameState).map((e) => e.label), ctx.endingHint);
   document.getElementById('player-name').textContent = gameState.profile.name;
@@ -391,6 +442,9 @@ async function sendTurn(actionLabel, userMessage, isRetry = false) {
 function applyResponse(data, actionLabel) {
   if (data.statusLine) renderStatusBar(gameState, data.statusLine);
 
+  const stateBefore = structuredClone(gameState);
+  const magicBefore = gameState?.magic ? structuredClone(gameState.magic) : null;
+
   if (data.stateUpdate) {
     const clamped = clampRelationships(data.stateUpdate, gameState);
     gameState = mergeStateUpdate(gameState, clamped);
@@ -401,6 +455,20 @@ function applyResponse(data, actionLabel) {
   }
 
   const narrative = data.narrative || '（本回合无叙事内容）';
+
+  if (magicBefore && gameState.magic) {
+    const gains = inferMagicGains(narrative, actionLabel, magicBefore, gameState.magic);
+    if (gains.length) {
+      const { magic, applied } = applyInferredMagicGains(gameState.magic, gains);
+      gameState.magic = magic;
+      showMagicGains(applied);
+    }
+  }
+
+  const milestones = detectMilestones(stateBefore.relationships || {}, gameState.relationships || {});
+  gameState.progression = processAfterTurn(gameState, stateBefore, narrative);
+  if (milestones.length) showMilestoneToast(milestones);
+
   gameState = addHistoryEntry(gameState, actionLabel, narrative);
 
   saveGame(gameState, currentSlot);

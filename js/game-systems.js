@@ -1,4 +1,6 @@
 import { getStageFromAffection, ROMANCE_TARGETS } from './state.js';
+import { getNpcScheduleContext } from './npc-schedules.js';
+import { getPlaythroughHook, getClubNames, getGossipLabel } from './progression.js';
 
 const EVENT_CALENDAR = [
   { id: 'opening_feast', week: 1, label: '开学宴会' },
@@ -88,11 +90,26 @@ export function canBeTriwizardChampion(state) {
 export function buildEventContext(state) {
   const upcoming = getUpcomingEvents(state);
   const ending = checkEnding(state);
+  const hook = getPlaythroughHook(state.profile?.year ?? 1);
+  const npcSchedule = getNpcScheduleContext(state);
+  const prog = state.progression;
+
   return {
     upcomingEvents: upcoming.map((e) => e.label),
     endingHint: ending?.label ?? null,
     hogsmeadeAvailable: canVisitHogsmeade(state),
     triwizardEligible: canBeTriwizardChampion(state),
+    playthroughHook: hook,
+    npcSchedule,
+    housePoints: prog?.housePoints ?? 0,
+    gossipLevel: prog?.gossip?.level ?? 0,
+    gossipLabel: getGossipLabel(prog?.gossip?.level ?? 0),
+    clubs: getClubNames(prog?.clubs ?? []),
+    eventPrep: prog?.eventPrep?.active ? prog.eventPrep : null,
+    examWeek: prog?.exams?.active ?? false,
+    patronusProgress: prog?.patronusCeremony?.progress ?? 0,
+    wandAffinity: prog?.wandNotes || state.profile?.wand?.affinity || '',
+    dmReminder: '每 5 回合须推进至少一项：学业/感情/学院事件/魔法/社团。大事件准备期请给准备阶段选项。',
   };
 }
 

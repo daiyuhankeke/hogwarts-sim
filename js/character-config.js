@@ -104,5 +104,6 @@ export function normalizeProfile(raw) {
     tone: raw.tone,
     saveCedric: raw.saveCedric === true,
     wand: raw.wand || null,
+    clubs: Array.isArray(raw.clubs) ? raw.clubs.slice(0, 3) : [],
   };
 }

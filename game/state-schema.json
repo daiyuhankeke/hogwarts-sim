@@ -18,6 +18,8 @@
         "custom": { "type": "string" },
         "target": { "type": "string" },
         "tone": { "enum": ["偏甜", "偏日常", "偏小虐"] },
+        "clubs": { "type": "array", "items": { "type": "string" } },
+        "saveCedric": { "type": "boolean" },
         "wand": {
           "type": "object",
           "properties": {
@@ -154,6 +156,62 @@
         }
       }
     },
-    "lastAction": { "type": "string" }
+    "lastAction": { "type": "string" },
+    "progression": {
+      "type": "object",
+      "properties": {
+        "housePoints": { "type": "integer" },
+        "housePenalties": { "type": "integer" },
+        "achievements": { "type": "array", "items": { "type": "string" } },
+        "memories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "text": { "type": "string" },
+              "target": { "type": ["string", "null"] },
+              "week": { "type": "integer" }
+            }
+          }
+        },
+        "milestones": { "type": "array" },
+        "gossip": {
+          "type": "object",
+          "properties": {
+            "level": { "type": "integer", "minimum": 0, "maximum": 3 },
+            "rumors": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "clubs": { "type": "array", "items": { "type": "string" } },
+        "eventPrep": {
+          "type": "object",
+          "properties": {
+            "active": { "type": "boolean" },
+            "label": { "type": "string" },
+            "weeksUntil": { "type": "integer" },
+            "steps": { "type": "array", "items": { "type": "string" } },
+            "completed": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "exams": {
+          "type": "object",
+          "properties": {
+            "active": { "type": "boolean" },
+            "stress": { "type": "integer" }
+          }
+        },
+        "patronusCeremony": {
+          "type": "object",
+          "properties": {
+            "eligible": { "type": "boolean" },
+            "progress": { "type": "integer" },
+            "revealed": { "type": "boolean" }
+          }
+        },
+        "playthroughHook": { "type": "string" },
+        "wandNotes": { "type": "string" }
+      }
+    }
   }
 }

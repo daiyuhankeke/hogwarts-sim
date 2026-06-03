@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="gh-wall" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1510"/>
+      <stop offset="40%" stop-color="#2a2218"/>
+      <stop offset="100%" stop-color="#0f0c08"/>
+    </linearGradient>
+    <linearGradient id="gh-ceiling" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#0a0812"/>
+      <stop offset="100%" stop-color="#1a1520"/>
+    </linearGradient>
+    <radialGradient id="gh-glow" cx="50%" cy="70%" r="60%">
+      <stop offset="0%" stop-color="#d4a035" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="gh-blur"><feGaussianBlur stdDeviation="2"/></filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#gh-wall)"/>
+  <rect width="1600" height="380" fill="url(#gh-ceiling)"/>
+  <!-- vaulted arches -->
+  <path d="M0 380 Q200 280 400 380 Q600 280 800 380 Q1000 280 1200 380 Q1400 280 1600 380 L1600 0 L0 0 Z" fill="#121018" opacity="0.9"/>
+  <path d="M100 380 Q300 220 500 380 Q700 220 900 380 Q1100 220 1300 380 Q1500 220 1600 380" fill="none" stroke="#3d3528" stroke-width="3" opacity="0.5"/>
+  <!-- starry ceiling hint -->
+  <circle cx="200" cy="80" r="1.5" fill="#fff" opacity="0.6"/>
+  <circle cx="450" cy="120" r="1" fill="#fff" opacity="0.4"/>
+  <circle cx="800" cy="60" r="2" fill="#fff" opacity="0.7"/>
+  <circle cx="1100" cy="100" r="1.2" fill="#fff" opacity="0.5"/>
+  <circle cx="1350" cy="70" r="1.5" fill="#fff" opacity="0.55"/>
+  <circle cx="650" cy="150" r="1" fill="#fff" opacity="0.35"/>
+  <!-- warm hall glow -->
+  <rect width="1600" height="900" fill="url(#gh-glow)"/>
+  <!-- long tables silhouette -->
+  <rect x="120" y="520" width="1360" height="28" rx="4" fill="#1a1208" opacity="0.85"/>
+  <rect x="180" y="600" width="1240" height="22" rx="3" fill="#1a1208" opacity="0.7"/>
+  <rect x="240" y="670" width="1120" height="18" rx="3" fill="#1a1208" opacity="0.55"/>
+  <!-- candles -->
+  <g filter="url(#gh-blur)" opacity="0.9">
+    <ellipse cx="300" cy="480" rx="8" ry="14" fill="#ffcc66"/>
+    <ellipse cx="550" cy="460" rx="7" ry="12" fill="#ffdd88"/>
+    <ellipse cx="800" cy="450" rx="9" ry="15" fill="#ffcc66"/>
+    <ellipse cx="1050" cy="465" rx="7" ry="12" fill="#ffdd88"/>
+    <ellipse cx="1300" cy="485" rx="8" ry="13" fill="#ffcc66"/>
+    <ellipse cx="450" cy="500" rx="6" ry="10" fill="#ffbb55" opacity="0.8"/>
+    <ellipse cx="950" cy="495" rx="6" ry="10" fill="#ffbb55" opacity="0.8"/>
+  </g>
+  <!-- house banners hint -->
+  <rect x="60" y="200" width="40" height="120" fill="#740001" opacity="0.35" rx="2"/>
+  <rect x="1500" y="200" width="40" height="120" fill="#1a472a" opacity="0.35" rx="2"/>
+</svg>

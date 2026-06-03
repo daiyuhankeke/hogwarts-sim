@@ -28,9 +28,40 @@ body {
   background-image:
     radial-gradient(ellipse at top, rgba(116, 0, 1, 0.15), transparent 60%),
     linear-gradient(180deg, #0f0a06 0%, #1a1208 100%);
+  transition: background-color 0.6s ease;
+}
+
+body[data-season="冬"] {
+  background-color: #121820;
+}
+
+body[data-house="格兰芬多"] {
+  background-image:
+    radial-gradient(ellipse at top, rgba(116, 0, 1, 0.22), transparent 60%),
+    linear-gradient(180deg, #0f0a06 0%, #1a1208 100%);
+}
+
+body[data-house="斯莱特林"] {
+  background-image:
+    radial-gradient(ellipse at top, rgba(26, 71, 42, 0.28), transparent 60%),
+    linear-gradient(180deg, #060f0a 0%, #0a1810 100%);
+}
+
+body[data-house="拉文克劳"] {
+  background-image:
+    radial-gradient(ellipse at top, rgba(14, 26, 64, 0.3), transparent 60%),
+    linear-gradient(180deg, #080c18 0%, #101828 100%);
+}
+
+body[data-house="赫奇帕奇"] {
+  background-image:
+    radial-gradient(ellipse at top, rgba(236, 185, 57, 0.15), transparent 60%),
+    linear-gradient(180deg, #141008 0%, #1a1608 100%);
 }
 
 .app-header {
+  position: relative;
+  z-index: 10;
   background: linear-gradient(135deg, var(--house-primary), #2a0808);
   color: #f4e4bc;
   padding: 1rem 1.5rem;
@@ -57,6 +88,170 @@ main {
   max-width: 960px;
   margin: 0 auto;
   padding: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+#game-screen {
+  position: relative;
+  min-height: calc(100vh - 5rem);
+}
+
+.game-scene-content {
+  position: relative;
+  z-index: 2;
+}
+
+.scene-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.scene-backdrop.scene-none {
+  display: none;
+}
+
+.scene-backdrop-image {
+  position: absolute;
+  inset: -5%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  transform: scale(1.05);
+}
+
+.scene-backdrop[data-loaded="1"] .scene-backdrop-image {
+  opacity: 1;
+}
+
+.scene-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(15, 10, 6, 0.55) 0%,
+    rgba(15, 10, 6, 0.35) 40%,
+    rgba(15, 10, 6, 0.65) 100%
+  );
+}
+
+.scene-backdrop[data-house="格兰芬多"]::after {
+  background: linear-gradient(180deg, rgba(80, 0, 0, 0.35) 0%, rgba(15, 10, 6, 0.3) 45%, rgba(40, 0, 0, 0.5) 100%);
+}
+
+.scene-backdrop[data-house="斯莱特林"]::after {
+  background: linear-gradient(180deg, rgba(0, 40, 20, 0.4) 0%, rgba(10, 15, 12, 0.35) 45%, rgba(0, 30, 15, 0.55) 100%);
+}
+
+.scene-backdrop[data-house="拉文克劳"]::after {
+  background: linear-gradient(180deg, rgba(10, 20, 60, 0.35) 0%, rgba(15, 10, 6, 0.3) 45%, rgba(20, 30, 70, 0.45) 100%);
+}
+
+.scene-backdrop[data-house="赫奇帕奇"]::after {
+  background: linear-gradient(180deg, rgba(60, 45, 0, 0.3) 0%, rgba(15, 10, 6, 0.28) 45%, rgba(50, 35, 0, 0.45) 100%);
+}
+
+.scene-label {
+  position: absolute;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  color: rgba(244, 228, 188, 0.45);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.fx-candles .scene-backdrop-fx {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, rgba(255, 204, 102, 0.9), transparent),
+    radial-gradient(2px 2px at 45% 25%, rgba(255, 221, 136, 0.7), transparent),
+    radial-gradient(2px 2px at 70% 28%, rgba(255, 204, 102, 0.85), transparent),
+    radial-gradient(2px 2px at 85% 32%, rgba(255, 187, 85, 0.6), transparent);
+  animation: candle-flicker 4s ease-in-out infinite alternate;
+}
+
+@keyframes candle-flicker {
+  0% { opacity: 0.6; }
+  100% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scene-backdrop-image,
+  .scene-backdrop-fx {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.fx-fireplace .scene-backdrop-fx {
+  position: absolute;
+  bottom: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 120px;
+  background: radial-gradient(ellipse, rgba(255, 120, 40, 0.25), transparent 70%);
+  animation: candle-flicker 3s ease-in-out infinite alternate;
+}
+
+.fx-steam .scene-backdrop-fx {
+  position: absolute;
+  left: 5%;
+  top: 30%;
+  width: 150px;
+  height: 200px;
+  background: radial-gradient(ellipse, rgba(255, 255, 255, 0.12), transparent 70%);
+  animation: steam-rise 6s ease-in-out infinite;
+}
+
+@keyframes steam-rise {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-20px); opacity: 0.7; }
+}
+
+body[data-weather="雨"] .scene-backdrop::after {
+  background: linear-gradient(180deg, rgba(10, 20, 40, 0.6), rgba(10, 15, 30, 0.75));
+}
+
+body[data-weather="雪"] .scene-backdrop-fx,
+.fx-snow .scene-backdrop-fx {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 10% 20%, #fff, transparent),
+    radial-gradient(1px 1px at 30% 60%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 60% 30%, #fff, transparent),
+    radial-gradient(1px 1px at 80% 70%, #fff, transparent);
+  opacity: 0.35;
+  animation: snow-drift 8s linear infinite;
+}
+
+@keyframes snow-drift {
+  from { transform: translateY(-10px); }
+  to { transform: translateY(10px); }
+}
+
+#game-screen .card {
+  background: rgba(244, 228, 188, 0.92);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+#game-screen .toolbar {
+  background: rgba(244, 228, 188, 0.88);
+  backdrop-filter: blur(4px);
 }
 
 .screen[hidden] {
@@ -499,6 +694,51 @@ textarea {
   margin-bottom: 0.75rem;
 }
 
+.magic-gain-toast {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  background: linear-gradient(90deg, rgba(116, 0, 1, 0.12), rgba(211, 166, 37, 0.15));
+  border: 1px solid var(--house-accent);
+  border-radius: 6px;
+  animation: gain-pop 0.35s ease;
+}
+
+.magic-gain-toast.fade-out {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.magic-gain-toast[hidden] {
+  display: none !important;
+}
+
+.magic-gain-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.35rem 0.65rem;
+  background: rgba(255, 254, 248, 0.95);
+  border-radius: 4px;
+  font-size: 0.88rem;
+  font-weight: bold;
+  color: var(--house-primary);
+  border-left: 3px solid var(--house-accent);
+}
+
+.magic-gain-chip small {
+  font-weight: normal;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+@keyframes gain-pop {
+  from { transform: translateY(-6px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 #ending-banner {
   background: linear-gradient(90deg, var(--house-primary), #4a1942);
 }
@@ -725,3 +965,86 @@ textarea {
   margin-top: 0.35rem;
   font-size: 0.75rem;
 }
+
+/* 霍格沃茨生活 / 进度面板 */
+.prog-hook {
+  font-size: 0.82rem;
+  font-weight: bold;
+  color: var(--house-primary);
+  margin-bottom: 0.35rem;
+  line-height: 1.35;
+}
+
+.house-points {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.exam-banner {
+  background: linear-gradient(90deg, rgba(184, 134, 11, 0.2), transparent);
+  border-left: 3px solid var(--border-gold);
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.patronus-progress {
+  font-size: 0.78rem;
+  color: silver;
+  text-shadow: 0 0 6px rgba(200, 220, 255, 0.4);
+  margin-bottom: 0.35rem;
+}
+
+.prep-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+}
+
+.prep-list li.done {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.prog-clubs {
+  font-size: 0.78rem;
+  margin: 0.35rem 0;
+}
+
+.wand-affinity-hint {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: var(--text-muted);
+  margin: 0.25rem 0;
+}
+
+.gossip-rumor {
+  font-size: 0.75rem;
+  color: #8b4513;
+  font-style: italic;
+  margin: 0.2rem 0;
+  padding-left: 0.5rem;
+  border-left: 2px solid rgba(139, 69, 19, 0.35);
+}
+
+.memory-item {
+  font-size: 0.78rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px dotted #ddd;
+}
+
+.memory-item strong {
+  display: block;
+  color: var(--house-primary);
+}
+
+.memory-item span {
+  color: var(--text-muted);
+}
+
+.milestone-chip {
+  background: linear-gradient(135deg, rgba(211, 166, 37, 0.25), rgba(116, 0, 1, 0.15));
+  border-color: var(--house-accent);
+}
+

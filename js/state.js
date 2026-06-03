@@ -6,6 +6,7 @@ import {
 } from './character-config.js';
 import { createInitialMagic, migrateMagic, mergeMagicUpdate } from './magic-system.js';
 import { createFallbackWand } from './wand-system.js';
+import { createInitialProgression, migrateProgression, mergeProgressionUpdate, processAfterTurn } from './progression.js';
 
 const STORAGE_KEY = 'hogwarts-sim-save';
 const SLOT_PREFIX = 'hogwarts-sim-slot-';
@@ -73,6 +74,7 @@ export function createInitialState(rawProfile) {
     history: [],
     lastAction: null,
     magic: createInitialMagic(profile),
+    progression: createInitialProgression(profile),
   };
 }
 
@@ -112,6 +114,10 @@ export function mergeStateUpdate(state, update) {
     next.magic = mergeMagicUpdate(next.magic || migrateMagic(next), update.magic);
   }
 
+  if (update.progression) {
+    next.progression = mergeProgressionUpdate(next.progression || migrateProgression(next), update.progression);
+  }
+
   return next;
 }
 
@@ -134,6 +140,7 @@ export function loadGame(slot = 0) {
       state.profile.talents = state.profile.talent.split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
     }
     state.magic = migrateMagic(state);
+    state.progression = migrateProgression(state);
     if (!state.profile.wand && state.profile.name) {
       state.profile.wand = createFallbackWand(state.profile);
     }
@@ -154,6 +161,7 @@ export function importSave(jsonString) {
   }
   state.relationships = migrateRelationships(state.relationships);
   state.magic = migrateMagic(state);
+  state.progression = migrateProgression(state);
   if (!state.profile.wand && state.profile.name) {
     state.profile.wand = createFallbackWand(state.profile);
   }
@@ -177,4 +185,4 @@ export function addHistoryEntry(state, action, narrative) {
   return state;
 }
 
-export { ROMANCE_TARGETS, MAX_SLOTS, YEAR_OFFSETS, computeNpcYears };
+export { ROMANCE_TARGETS, MAX_SLOTS, YEAR_OFFSETS, computeNpcYears, processAfterTurn };

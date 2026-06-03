@@ -1,5 +1,6 @@
 import { getSpellById, getMasteryLabel, MAGIC_SUBJECTS, OWL_EXAM_SUBJECTS, OWL_GRADE_NAMES } from './magic-system.js';
 import { renderWandSvg, formatWandSummary } from './wand-system.js';
+import { ACHIEVEMENTS, getClubNames, getGossipLabel, getPlaythroughHook } from './progression.js';
 
 const HOUSE_COLORS = {
   '格兰芬多': { primary: '#740001', accent: '#d3a625' },
@@ -218,6 +219,98 @@ export function showError(message) {
 export function hideError() {
   const el = document.getElementById('error-banner');
   if (el) el.hidden = true;
+}
+
+export function showMagicGains(gains) {
+  const el = document.getElementById('magic-gain-toast');
+  if (!el || !gains?.length) return;
+
+  el.innerHTML = gains
+    .map(
+      (g) =>
+        `<span class="magic-gain-chip">✦ ${escapeHtml(g.subjectName)} +${g.delta}` +
+        `<small>${escapeHtml(g.reason)}</small></span>`
+    )
+    .join('');
+  el.hidden = false;
+  el.classList.remove('fade-out');
+  clearTimeout(showMagicGains._timer);
+  showMagicGains._timer = setTimeout(() => {
+    el.classList.add('fade-out');
+    setTimeout(() => {
+      el.hidden = true;
+    }, 400);
+  }, 4500);
+}
+
+export function renderProgressPanel(state) {
+  const el = document.getElementById('progress-panel');
+  if (!el || !state?.progression) return;
+
+  const p = state.progression;
+  const house = state.profile?.house ?? '';
+  const hook = getPlaythroughHook(state.profile?.year ?? 1);
+  const gossip = getGossipLabel(p.gossip?.level ?? 0);
+
+  let prepHtml = '';
+  if (p.eventPrep?.active) {
+    const steps = (p.eventPrep.steps || [])
+      .map((s) => {
+        const done = (p.eventPrep.completed || []).includes(s);
+        return `<li class="${done ? 'done' : ''}">${escapeHtml(s)}</li>`;
+      })
+      .join('');
+    prepHtml = `<details class="magic-details" open><summary>准备 · ${escapeHtml(p.eventPrep.label)}（${p.eventPrep.weeksUntil} 周后）</summary><ul class="prep-list">${steps}</ul></details>`;
+  }
+
+  let examHtml = '';
+  if (p.exams?.active) {
+    examHtml = `<div class="exam-banner">📜 O.W.L. 考试周 · 压力 ${p.exams.stress ?? 0}/100</div>`;
+  }
+
+  let patronusHtml = '';
+  if (p.patronusCeremony?.eligible && !p.patronusCeremony.revealed) {
+    patronusHtml = `<div class="patronus-progress">守护神修习 ${p.patronusCeremony.progress}%</div>`;
+  }
+
+  const clubs = getClubNames(p.clubs || []);
+  const achUnlocked = new Set(p.achievements || []);
+  const achHtml = ACHIEVEMENTS.filter((a) => achUnlocked.has(a.id))
+    .map((a) => `<span class="magic-tag" title="${escapeHtml(a.desc)}">${escapeHtml(a.name)}</span>`)
+    .join('') || '<span class="hint">暂无</span>';
+
+  const memHtml = (p.memories || []).slice(0, 5)
+    .map((m) => `<div class="memory-item"><strong>${escapeHtml(m.title)}</strong><span>${escapeHtml(m.text)}</span></div>`)
+    .join('') || '<p class="hint">尚未留下回忆</p>';
+
+  const rumors = (p.gossip?.rumors || []).slice(0, 2).map((r) => `<p class="gossip-rumor">${escapeHtml(r)}</p>`).join('');
+
+  el.innerHTML =
+    `<div class="prog-hook">${escapeHtml(hook.label)} · ${escapeHtml(hook.hint)}</div>` +
+    `<div class="house-points">${escapeHtml(house)} +${p.housePoints}` +
+    (p.housePenalties ? ` · 警告 ${p.housePenalties}` : '') +
+    ` · 流言：${escapeHtml(gossip)}</div>` +
+    examHtml + patronusHtml + prepHtml +
+    (clubs.length ? `<p class="prog-clubs">社团：${escapeHtml(clubs.join('、'))}</p>` : '') +
+    (p.wandNotes ? `<p class="wand-affinity-hint" title="魔杖相性">🪄 ${escapeHtml(p.wandNotes.slice(0, 60))}${p.wandNotes.length > 60 ? '…' : ''}</p>` : '') +
+    rumors +
+    `<details class="magic-details"><summary>回忆 (${(p.memories || []).length})</summary>${memHtml}</details>` +
+    `<details class="magic-details"><summary>成就 (${achUnlocked.size})</summary><div class="magic-notable">${achHtml}</div></details>`;
+}
+
+export function showMilestoneToast(milestones) {
+  const el = document.getElementById('magic-gain-toast');
+  if (!el || !milestones?.length) return;
+  el.innerHTML = milestones
+    .map((m) => `<span class="magic-gain-chip milestone-chip">💫 ${escapeHtml(m.target)} · ${escapeHtml(m.title)}</span>`)
+    .join('');
+  el.hidden = false;
+  el.classList.remove('fade-out');
+  clearTimeout(showMilestoneToast._timer);
+  showMilestoneToast._timer = setTimeout(() => {
+    el.classList.add('fade-out');
+    setTimeout(() => { el.hidden = true; }, 400);
+  }, 5000);
 }
 
 export function showScreen(screenId) {
