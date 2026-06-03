@@ -161,6 +161,9 @@ export function loadGame(slot = 0) {
     if (!state.profile.wand && state.profile.name) {
       state.profile.wand = createFallbackWand(state.profile);
     }
+    if (state.profile && !state.profile.family?.summary) {
+      state.profile = normalizeProfile(state.profile);
+    }
     return state;
   } catch {
     return null;
@@ -185,6 +188,9 @@ export function importSave(jsonString) {
   }
   if (!state.flags) state.flags = {};
   state.flags.canonPlot = migrateCanonPlot(state);
+  if (state.profile && !state.profile.family?.summary) {
+    state.profile = normalizeProfile(state.profile);
+  }
   return state;
 }
 

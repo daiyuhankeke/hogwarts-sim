@@ -863,6 +863,202 @@ textarea {
   border-radius: 6px;
 }
 
+.family-section {
+  padding: 0.75rem;
+  background: rgba(248, 252, 255, 0.55);
+  border: 1px dashed #7a9eb8;
+  border-radius: 6px;
+}
+
+.family-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
+.family-manual {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px dotted #c4a35a;
+}
+
+.family-actions {
+  margin-top: 0.5rem;
+}
+
+.family-preview {
+  margin-top: 0.65rem;
+  padding: 0.65rem;
+  background: #fffef8;
+  border: 1px solid #d4c4a0;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* 侧栏家庭卡片 */
+.family-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.family-name {
+  font-weight: bold;
+  color: var(--house-primary);
+  font-size: 0.95rem;
+}
+
+.family-blood {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.family-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.45rem;
+}
+
+.family-badge {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid;
+}
+
+.family-badge-player {
+  background: rgba(255, 255, 255, 0.6);
+  border-color: var(--house-accent);
+  color: var(--text-main);
+}
+
+.attitude-extreme { background: #3d1515; color: #f5d0d0; border-color: #6b2020; }
+.attitude-traditional { background: #4a3728; color: #f0e0c8; border-color: #6b5344; }
+.attitude-neutral { background: #eef1f4; color: #445; border-color: #aab; }
+.attitude-reform { background: #e8f4ea; color: #264; border-color: #8cb; }
+.attitude-open { background: #e6f0ff; color: #246; border-color: #8ac; }
+.attitude-muggle { background: #f5f0ea; color: #554; border-color: #cba; }
+
+.family-household {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+}
+
+.family-parent {
+  display: flex;
+  gap: 0.45rem;
+  margin-bottom: 0.45rem;
+  font-size: 0.82rem;
+}
+
+.family-parent-role {
+  flex-shrink: 0;
+  width: 1.2rem;
+  height: 1.2rem;
+  line-height: 1.2rem;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--house-primary);
+  color: #fff;
+  font-size: 0.7rem;
+}
+
+.family-parent-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.family-conn-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.family-npc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.family-npc-tie {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.25rem 0.4rem;
+  align-items: center;
+  padding: 0.35rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  border-left: 3px solid #ccc;
+}
+
+.family-tone-friendly { border-left-color: #4a9; background: rgba(68, 170, 153, 0.08); }
+.family-tone-hostile { border-left-color: #c44; background: rgba(204, 68, 68, 0.08); }
+.family-tone-neutral { border-left-color: #aaa; background: rgba(0, 0, 0, 0.03); }
+.family-tone-complex { border-left-color: #c4a35a; background: rgba(196, 163, 90, 0.1); }
+
+.family-npc-name { font-weight: bold; }
+.family-npc-rel { color: var(--text-muted); font-size: 0.72rem; }
+.family-npc-tone { font-size: 0.7rem; color: var(--house-primary); }
+
+.family-event {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.4rem;
+  font-size: 0.78rem;
+  margin-bottom: 0.35rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px dotted #ddd;
+}
+
+.family-event-week {
+  grid-row: span 2;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding-top: 0.1rem;
+}
+
+.family-event-title {
+  font-weight: bold;
+  color: var(--house-primary);
+}
+
+.family-event-text {
+  grid-column: 2;
+  color: var(--text-muted);
+}
+
+.family-beat-list {
+  margin: 0;
+  padding-left: 1rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.family-beat-high { color: #8b3030; }
+.family-beat-medium { color: var(--text-main); }
+.family-beat-low { color: var(--text-muted); }
+
+.family-estranged-banner {
+  font-size: 0.78rem;
+  padding: 0.35rem 0.5rem;
+  margin-bottom: 0.45rem;
+  border-radius: 4px;
+  background: rgba(139, 48, 48, 0.12);
+  border: 1px solid rgba(139, 48, 48, 0.35);
+  color: #6b2020;
+}
+
 .wand-actions {
   display: flex;
   flex-wrap: wrap;

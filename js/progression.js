@@ -1,3 +1,6 @@
+import { createInitialFamilyTrack, migrateFamilyTrack, processFamilyAfterTurn } from './family-interactions.js';
+import { isExtremePurebloodFamily } from './family-background.js';
+
 /** 社团、学院分、成就、回忆、里程碑、舆论、大事件准备、考试、守护神、魔杖相性 */
 
 export const CLUB_OPTIONS = [
@@ -85,6 +88,7 @@ export function createInitialProgression(profile) {
     patronusCeremony: { eligible: year >= 3, progress: year >= 3 ? 10 : 0, revealed: false },
     playthroughHook: hook.id,
     wandNotes: buildWandAffinityNotes(profile.wand),
+    familyTrack: createInitialFamilyTrack(profile.family),
   };
 }
 
@@ -117,6 +121,7 @@ function normalizeProgression(prog, profile) {
     memories: (prog.memories || []).slice(0, 20),
     clubs: prog.clubs?.length ? prog.clubs : (profile?.clubs || []),
     wandNotes: prog.wandNotes || buildWandAffinityNotes(profile?.wand),
+    familyTrack: migrateFamilyTrack({ profile, progression: prog }),
   };
 }
 
@@ -157,6 +162,12 @@ export function mergeProgressionUpdate(current, update) {
   if (update.patronusCeremony) Object.assign(next.patronusCeremony, update.patronusCeremony);
   if (update.patronusProgress) {
     next.patronusCeremony.progress = Math.min(100, next.patronusCeremony.progress + update.patronusProgress);
+  }
+  if (update.familyTrack) {
+    next.familyTrack = { ...next.familyTrack, ...update.familyTrack };
+    if (update.familyTrack.recentEvents) {
+      next.familyTrack.recentEvents = update.familyTrack.recentEvents.slice(0, 8);
+    }
   }
 
   return next;
@@ -243,6 +254,8 @@ export function computeGossipLevel(state) {
   if (highAff >= 2) level = Math.max(level, 2);
   if (highAff >= 3) level = Math.max(level, 3);
   if (state.profile?.bloodStatus === '麻瓜出身' && rel['德拉科']?.affection >= 41) level = Math.max(level, 2);
+  const family = state.profile?.family;
+  if (family && isExtremePurebloodFamily(family) && rel['赫敏']?.affection >= 41) level = Math.max(level, 2);
   return Math.min(3, level);
 }
 
@@ -279,6 +292,9 @@ export function processAfterTurn(state, stateBefore, narrative = '') {
   if (/社团|D\.A\.|决斗俱乐部|魁地奇训练|斯拉格霍恩/.test(narrative)) {
     progression.clubActivityCount += 1;
   }
+
+  const familyUpdate = processFamilyAfterTurn(state, narrative);
+  if (familyUpdate) progression.familyTrack = familyUpdate;
 
   progression = refreshEventPrep({ ...state, progression });
   progression = refreshExamState({ ...state, progression });

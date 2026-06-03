@@ -3,6 +3,7 @@ import { getNpcScheduleContext } from './npc-schedules.js';
 import { getPlaythroughHook, getClubNames, getGossipLabel } from './progression.js';
 import { getTimetableContext } from './timetable.js';
 import { getCanonicalPlotContext, getCanonEventsForCalendar } from './canonical-storyline.js';
+import { getFamilyInteractionContext } from './family-interactions.js';
 
 const EVENT_CALENDAR = [
   { id: 'opening_feast', week: 1, label: '开学宴会' },
@@ -99,6 +100,7 @@ export function buildEventContext(state) {
   const prog = state.progression;
   const timetable = getTimetableContext(state);
   const canonPlot = getCanonicalPlotContext(state);
+  const familyInteraction = getFamilyInteractionContext(state);
 
   return {
     upcomingEvents: upcoming.map((e) => e.label),
@@ -117,7 +119,18 @@ export function buildEventContext(state) {
     examWeek: prog?.exams?.active ?? false,
     patronusProgress: prog?.patronusCeremony?.progress ?? 0,
     wandAffinity: prog?.wandNotes || state.profile?.wand?.affinity || '',
-    dmReminder: '每 5 回合须推进至少一项：学业/感情/学院事件/魔法/社团/原著主线。大事件准备期请给准备阶段选项。主线须对齐 canonPlot。',
+    family: state.profile?.family
+      ? {
+          summary: state.profile.family.summary,
+          familyLabel: state.profile.family.familyLabel,
+          familyMuggleAttitude: state.profile.family.familyMuggleAttitude,
+          playerMuggleAttitude: state.profile.family.playerMuggleAttitudeLabel,
+          canonConnections: state.profile.family.canonConnections || [],
+        }
+      : null,
+    familyInteraction,
+    dmReminder: '每 5 回合须推进至少一项：学业/感情/学院事件/魔法/社团/原著主线/家庭线。大事件准备期请给准备阶段选项。主线须对齐 canonPlot。'
+      + (familyInteraction.familyPrompt ? ` ${familyInteraction.familyPrompt}` : ''),
   };
 }
 

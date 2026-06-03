@@ -34,6 +34,43 @@
             "imageUrl": { "type": ["string", "null"] },
             "generatedBy": { "type": "string" }
           }
+        },
+        "family": {
+          "type": "object",
+          "properties": {
+            "bloodStatus": { "type": "string" },
+            "sacred28": { "type": "boolean" },
+            "familyId": { "type": ["string", "null"] },
+            "surname": { "type": ["string", "null"] },
+            "familyLabel": { "type": ["string", "null"] },
+            "familyMuggleAttitude": { "type": ["string", "null"] },
+            "playerMuggleAttitude": { "type": "string" },
+            "playerMuggleAttitudeLabel": { "type": "string" },
+            "household": { "type": ["string", "null"] },
+            "wizardParentSide": { "type": ["string", "null"] },
+            "summary": { "type": "string" },
+            "canonConnections": { "type": "array", "items": { "type": "string" } },
+            "father": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "bloodStatus": { "type": "string" },
+                "appearance": { "type": "string" },
+                "personality": { "type": "string" },
+                "occupation": { "type": "string" }
+              }
+            },
+            "mother": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "bloodStatus": { "type": "string" },
+                "appearance": { "type": "string" },
+                "personality": { "type": "string" },
+                "occupation": { "type": "string" }
+              }
+            }
+          }
         }
       }
     },
@@ -230,7 +267,27 @@
           }
         },
         "playthroughHook": { "type": "string" },
-        "wandNotes": { "type": "string" }
+        "wandNotes": { "type": "string" },
+        "familyTrack": {
+          "type": "object",
+          "properties": {
+            "recentEvents": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "week": { "type": "integer" },
+                  "type": { "type": "string" },
+                  "title": { "type": "string" },
+                  "text": { "type": "string" }
+                }
+              }
+            },
+            "lastBeatWeek": { "type": "integer" },
+            "lettersReceived": { "type": "integer" },
+            "npcTies": { "type": "array" }
+          }
+        }
       }
     }
   }

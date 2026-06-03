@@ -1,5 +1,7 @@
 /** 角色创建默认值与可选项 */
 
+import { normalizeFamily } from './family-background.js';
+
 export const DEFAULT_NAME = '艾拉·格林';
 export const DEFAULT_APPEARANCE = '深棕卷发，琥珀色眼睛，气质安静';
 
@@ -92,11 +94,16 @@ export function normalizeProfile(raw) {
     ? raw.talents.filter(Boolean)
     : (raw.talent || '').split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
 
+  const bloodStatus = raw.bloodStatus;
+  const family = raw.family?.summary
+    ? raw.family
+    : normalizeFamily(raw.family, { name, house: raw.house, bloodStatus });
+
   return {
     name,
     house: raw.house,
     year: Number(raw.year),
-    bloodStatus: raw.bloodStatus,
+    bloodStatus,
     appearance,
     talents,
     custom: (raw.custom || '').trim(),
@@ -105,5 +112,6 @@ export function normalizeProfile(raw) {
     saveCedric: raw.saveCedric === true,
     wand: raw.wand || null,
     clubs: Array.isArray(raw.clubs) ? raw.clubs.slice(0, 3) : [],
+    family,
   };
 }

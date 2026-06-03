@@ -25,6 +25,7 @@ import {
   renderRelationships,
   renderMagicPanel,
   renderProgressPanel,
+  renderFamilyPanel,
   renderTimetablePanel,
   renderEventHints,
   setLoading,
@@ -40,6 +41,14 @@ import { applySceneVisual, clearSceneVisual } from './scene-visuals.js';
 import { inferMagicGains, applyInferredMagicGains } from './magic-inference.js';
 import { formatTodayClassHint } from './timetable.js';
 import { toggleAudio, isAudioEnabled, stopAmbient } from './ambient-audio.js';
+import { resolveOptions, buildContextualOptions } from './contextual-options.js';
+import {
+  SACRED_28_FAMILIES,
+  PLAYER_MUGGLE_ATTITUDES,
+  CANON_CONNECTION_OPTIONS,
+  collectFamilyFromForm,
+  formatFamilyForPrompt,
+} from './family-background.js';
 
 let gameState = null;
 let currentSlot = 0;
@@ -72,8 +81,10 @@ function init() {
     if (gameState.history.length > 0) {
       const last = gameState.history[gameState.history.length - 1];
       renderNarrative(last.narrative);
-      renderOptions(getDefaultOptions(), handleOptionSelect);
+    } else {
+      bootstrapTurnView('读档成功。正在等待剧情，你也可以先选一项行动。');
     }
+    renderOptions(getOptionsForState(lastResponse?.options), handleOptionSelect);
   } else {
     clearSceneVisual();
     showScreen('create-screen');
@@ -129,6 +140,8 @@ function initCharacterFormOptions() {
     else stopAmbient();
   });
   updateAudioButton();
+  initFamilyFormOptions();
+  bindFamilyFormEvents();
 }
 
 function limitClubSelection(e) {
@@ -146,6 +159,101 @@ function collectClubs(form) {
 function updateAudioButton() {
   const btn = document.getElementById('audio-toggle-btn');
   if (btn) btn.textContent = isAudioEnabled() ? '🔊 环境音' : '🔇 环境音';
+}
+
+function initFamilyFormOptions() {
+  const familySelect = document.getElementById('wizard-family-select');
+  if (familySelect) {
+    for (const f of SACRED_28_FAMILIES) {
+      const opt = document.createElement('option');
+      opt.value = f.id;
+      opt.textContent = `${f.label}（${f.surname}）— ${f.attitude}`;
+      familySelect.appendChild(opt);
+    }
+    const customOpt = document.createElement('option');
+    customOpt.value = 'custom';
+    customOpt.textContent = '其他纯血姓氏（自拟）';
+    familySelect.appendChild(customOpt);
+  }
+
+  const playerAtt = document.getElementById('player-muggle-attitude');
+  if (playerAtt) {
+    playerAtt.innerHTML = PLAYER_MUGGLE_ATTITUDES.map(
+      (a) => `<option value="${a.value}">${a.label}</option>`
+    ).join('');
+  }
+
+  const chips = document.getElementById('canon-connection-chips');
+  if (chips) {
+    chips.innerHTML = CANON_CONNECTION_OPTIONS.filter((c) => c.id !== 'none').map(
+      (c) =>
+        `<label class="talent-chip"><input type="checkbox" name="canonConnection" value="${c.id}"><span>${c.label}</span></label>`
+    ).join('');
+  }
+
+  updateFamilyFormVisibility();
+}
+
+function bindFamilyFormEvents() {
+  const form = document.getElementById('character-form');
+  form?.bloodStatus?.addEventListener('change', updateFamilyFormVisibility);
+  document.getElementById('blood-status-select')?.addEventListener('change', updateFamilyFormVisibility);
+  form?.wizardFamily?.addEventListener('change', updateFamilyFormVisibility);
+  form?.familyAutoGenerate?.addEventListener('change', () => {
+    const manual = document.getElementById('family-manual-panel');
+    const auto = form?.familyAutoGenerate?.checked;
+    if (manual) manual.hidden = auto !== false;
+  });
+  document.getElementById('family-preview-btn')?.addEventListener('click', () => {
+    const formEl = document.getElementById('character-form');
+    if (!formEl) return;
+    const family = collectFamilyFromForm(formEl);
+    const preview = document.getElementById('family-preview');
+    if (preview) {
+      preview.textContent = formatFamilyForPrompt(family);
+      preview.hidden = false;
+    }
+  });
+}
+
+function setElVisible(el, visible) {
+  if (!el) return;
+  el.hidden = !visible;
+  el.style.display = visible ? '' : 'none';
+}
+
+function updateFamilyFormVisibility() {
+  const form = document.getElementById('character-form');
+  if (!form) return;
+  const blood = form.bloodStatus?.value || form.elements?.bloodStatus?.value || '纯血';
+  const wizardRow = document.getElementById('wizard-family-row');
+  const customWrap = document.getElementById('custom-surname-wrap');
+  const sideWrap = document.getElementById('wizard-parent-side-wrap');
+  const attitudeRow = document.getElementById('player-attitude-row');
+  const hintEl = document.getElementById('family-section-hint');
+  const isMuggleborn = blood === '麻瓜出身';
+  const isHalf = blood === '混血';
+  const isWizardBlood = blood === '纯血' || isHalf;
+
+  setElVisible(wizardRow, isWizardBlood);
+  setElVisible(sideWrap, isHalf);
+  setElVisible(attitudeRow, isWizardBlood);
+
+  if (hintEl) {
+    if (isMuggleborn) {
+      hintEl.textContent = '麻瓜出身：父母均为麻瓜（或一方为麻瓜、一方为麻瓜出身亦可）。不可选择神圣二十八家族。';
+    } else if (isHalf) {
+      hintEl.textContent = '混血：请选择巫师侧家族（神圣二十八）；另一方将自动设为麻瓜或麻瓜出身巫师。若该家族鄙视麻瓜，父母会因跨血统结合被除名。';
+    } else {
+      hintEl.textContent = '纯血：可归属神圣二十八家族；家族对麻瓜的态度沿用原著设定。';
+    }
+  }
+
+  const familyId = form.wizardFamily?.value;
+  if (customWrap) setElVisible(customWrap, isWizardBlood && familyId === 'custom');
+
+  const manual = document.getElementById('family-manual-panel');
+  if (manual) manual.hidden = form.familyAutoGenerate?.checked !== false;
 }
 
 function collectTalents(form) {
@@ -177,6 +285,7 @@ function collectProfileFromForm(form) {
     saveCedric: form.saveCedric?.checked ?? false,
     clubs: collectClubs(form),
     wand: pendingWand,
+    family: collectFamilyFromForm(form),
   };
 }
 
@@ -251,6 +360,7 @@ function bindCharacterForm() {
     currentSlot = 0;
     applyHouseTheme(gameState.profile.house);
     showScreen('game-screen');
+    bootstrapTurnView('猫头鹰正在送来第一页故事，请稍候……');
     renderGameUI();
 
     await sendTurn('开始游戏', buildStartMessage(profile));
@@ -262,6 +372,7 @@ function buildStartMessage(profile) {
   let msg = `开始游戏。角色信息：\n`;
   msg += `姓名：${p.name}\n学院：${p.house}\n年级：${p.year}\n`;
   msg += `血统：${p.bloodStatus}\n外貌：${p.appearance}\n`;
+  if (p.family) msg += `${formatFamilyForPrompt(p.family)}\n`;
   const talents = p.talents || [];
   if (talents.length) msg += `特殊才能：${talents.join('、')}\n`;
   if (p.wand) {
@@ -334,7 +445,7 @@ function bindSaveControls() {
     renderGameUI();
     const lastHist = gameState.history[gameState.history.length - 1];
     renderNarrative(lastHist?.narrative || '读档成功，请选择下一步行动。');
-    renderOptions(lastResponse?.options || getDefaultOptions(), handleOptionSelect);
+    renderOptions(getOptionsForState(lastResponse?.options), handleOptionSelect);
     hideError();
   });
 
@@ -362,7 +473,7 @@ function bindSaveControls() {
       showScreen('game-screen');
       renderGameUI();
       renderNarrative('存档导入成功。');
-      renderOptions(getDefaultOptions(), handleOptionSelect);
+      renderOptions(getOptionsForState(), handleOptionSelect);
       hideError();
     } catch (err) {
       showError('导入失败：' + err.message);
@@ -380,6 +491,7 @@ function renderGameUI() {
   renderRelationships(gameState);
   renderMagicPanel(gameState);
   renderProgressPanel(gameState);
+  renderFamilyPanel(gameState);
   renderTimetablePanel(gameState);
   const ctx = buildEventContext(gameState);
   renderEventHints(getUpcomingEvents(gameState).map((e) => e.label), ctx.endingHint);
@@ -408,6 +520,7 @@ function isHogsmeadeOption(option) {
 }
 
 async function sendTurn(actionLabel, userMessage, isRetry = false) {
+  if (gameState) gameState.lastAction = userMessage;
   setLoading(true);
   hideError();
 
@@ -436,13 +549,26 @@ async function sendTurn(actionLabel, userMessage, isRetry = false) {
     applyResponse(data, actionLabel);
   } catch (err) {
     showError(err.message || '网络错误，请重试');
-    renderOptions(lastResponse?.options || getDefaultOptions(), handleOptionSelect);
+    bootstrapTurnView(gameState?.history?.length
+      ? gameState.history[gameState.history.length - 1].narrative
+      : '连接失败，请检查网络或邀请码后点击「重试本回合」。');
   } finally {
     setLoading(false);
   }
 }
 
 function applyResponse(data, actionLabel) {
+  try {
+    applyResponseInner(data, actionLabel);
+  } catch (err) {
+    console.error('applyResponse error:', err);
+    showError(`处理剧情时出错：${err.message}。可先选择下方行动，或重试本回合。`);
+    if (data?.narrative) renderNarrative(data.narrative);
+    renderOptions(getOptionsForState(data?.options), handleOptionSelect);
+  }
+}
+
+function applyResponseInner(data, actionLabel) {
   if (data.statusLine) renderStatusBar(gameState, data.statusLine);
 
   const stateBefore = structuredClone(gameState);
@@ -477,7 +603,7 @@ function applyResponse(data, actionLabel) {
   saveGame(gameState, currentSlot);
   renderGameUI();
   renderNarrative(narrative);
-  renderOptions(data.options || getDefaultOptions(), handleOptionSelect);
+  renderOptions(getOptionsForState(data.options), handleOptionSelect);
 
   const ending = checkEnding(gameState);
   if (data.ending || ending?.type) {
@@ -501,14 +627,15 @@ function bindInviteCode() {
   });
 }
 
-function getDefaultOptions() {
-  const classHint = gameState ? formatTodayClassHint(gameState) : '魔药/变形/魔咒…';
-  return [
-    { id: 'A', text: '去图书馆复习（可能遇到某男主）' },
-    { id: 'B', text: '去公共休息室休息（可能触发闲聊）' },
-    { id: 'C', text: '去霍格莫德（周六限定）' },
-    { id: 'D', text: '去魁地奇球场看训练' },
-    { id: 'E', text: `去上课（今日：${classHint}）` },
-    { id: 'F', text: '自定义行动' },
-  ];
+function getOptionsForState(aiOptions) {
+  if (!gameState) return buildContextualOptions(null);
+  const narrative = gameState.history?.[gameState.history.length - 1]?.narrative || '';
+  const classHint = formatTodayClassHint(gameState);
+  return resolveOptions(aiOptions, gameState, narrative, classHint);
+}
+
+/** 进入游戏或回合失败时，保证叙事区与选项区有内容 */
+function bootstrapTurnView(narrativeHint) {
+  if (narrativeHint) renderNarrative(narrativeHint);
+  renderOptions(getOptionsForState(lastResponse?.options), handleOptionSelect);
 }

@@ -3,6 +3,7 @@ import { renderWandSvg, formatWandSummary } from './wand-system.js';
 import { ACHIEVEMENTS, getClubNames, getGossipLabel, getPlaythroughHook } from './progression.js';
 import { getCanonicalPlotContext } from './canonical-storyline.js';
 import { WEEKDAYS, PERIOD_LABELS, getTodayClasses, getTodayEveningClasses, SUBJECT_CATALOG } from './timetable.js';
+import { getAttitudeClass, getToneLabel, migrateFamilyTrack, getSuggestedFamilyBeats } from './family-interactions.js';
 
 const HOUSE_COLORS = {
   '格兰芬多': { primary: '#740001', accent: '#d3a625' },
@@ -314,6 +315,91 @@ export function renderProgressPanel(state) {
     rumors +
     `<details class="magic-details"><summary>回忆 (${(p.memories || []).length})</summary>${memHtml}</details>` +
     `<details class="magic-details"><summary>成就 (${achUnlocked.size})</summary><div class="magic-notable">${achHtml}</div></details>`;
+}
+
+export function renderFamilyPanel(state) {
+  const el = document.getElementById('family-panel');
+  if (!el) return;
+
+  const family = state.profile?.family;
+  if (!family) {
+    el.innerHTML = '<p class="hint">暂无家庭背景</p>';
+    return;
+  }
+
+  const track = migrateFamilyTrack(state);
+  const beats = getSuggestedFamilyBeats(state);
+
+  const familyTitle = family.familyLabel
+    ? `${family.familyLabel}${family.sacred28 ? ' · 神圣二十八' : ''}`
+    : (family.bloodStatus === '麻瓜出身' ? '麻瓜家庭' : '巫师家庭');
+
+  const attitudeHtml = family.familyMuggleAttitude && family.familyMuggleAttitude !== '不适用（麻瓜家庭）'
+    ? `<span class="family-badge ${getAttitudeClass(family.familyMuggleAttitude)}">家族 ${escapeHtml(family.familyMuggleAttitude)}</span>`
+    : '';
+  const playerAttHtml = family.playerMuggleAttitudeLabel
+    ? `<span class="family-badge family-badge-player">个人 ${escapeHtml(family.playerMuggleAttitudeLabel)}</span>`
+    : '';
+
+  const estrangedHtml = family.estrangedFromFamily
+    ? `<div class="family-estranged-banner">⚠ 已被${escapeHtml(family.familyLabel || '家族')}除名</div>`
+    : '';
+
+  const parentHtml = ['father', 'mother'].map((role) => {
+    const p = family[role];
+    if (!p) return '';
+    const expelled = p.expelledFromFamily ? ' · 已除名' : '';
+    return `<div class="family-parent">
+      <span class="family-parent-role">${role === 'father' ? '父' : '母'}</span>
+      <div class="family-parent-body">
+        <strong>${escapeHtml(p.name)}</strong>
+        <span class="hint">${escapeHtml(p.bloodStatus || '')}${expelled} · ${escapeHtml(p.occupation)} · ${escapeHtml(p.personality)}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const connHtml = (family.canonConnections || []).length
+    ? `<ul class="family-conn-list">${family.canonConnections.map((c) => `<li>${escapeHtml(c)}</li>`).join('')}</ul>`
+    : '<p class="hint">无特殊原著关联</p>';
+
+  const npcHtml = (track.npcTies || []).length
+    ? track.npcTies.map((t) =>
+        `<div class="family-npc-tie family-tone-${t.tone}" title="${escapeHtml(t.hint || '')}">` +
+        `<span class="family-npc-name">${escapeHtml(t.npc)}</span>` +
+        `<span class="family-npc-rel">${escapeHtml(t.relation)}</span>` +
+        `<span class="family-npc-tone">${escapeHtml(getToneLabel(t.tone))}</span></div>`
+      ).join('')
+    : '<p class="hint">暂无关联 NPC</p>';
+
+  const eventsHtml = (track.recentEvents || []).length
+    ? track.recentEvents.slice(0, 4).map((e) =>
+        `<div class="family-event"><span class="family-event-week">W${e.week}</span>` +
+        `<span class="family-event-title">${escapeHtml(e.title)}</span>` +
+        `<span class="family-event-text">${escapeHtml(e.text)}</span></div>`
+      ).join('')
+    : '<p class="hint">尚无家庭线剧情记录</p>';
+
+  const beatHtml = beats.length
+    ? beats.map((b) =>
+        `<li class="family-beat family-beat-${b.priority}">${escapeHtml(b.label)}` +
+        (b.hint ? `<span class="hint"> — ${escapeHtml(b.hint)}</span>` : '') +
+        `</li>`
+      ).join('')
+    : '<li class="hint">暂无待触发</li>';
+
+  el.innerHTML =
+    `<div class="family-header">
+      <span class="family-name">${escapeHtml(familyTitle)}</span>
+      <span class="family-blood">${escapeHtml(family.bloodStatus)}</span>
+    </div>` +
+    `<div class="family-badges">${attitudeHtml}${playerAttHtml}</div>` +
+    estrangedHtml +
+    (family.household ? `<p class="hint family-household">🏠 ${escapeHtml(family.household)}</p>` : '') +
+    `<details class="magic-details" open><summary>父母</summary>${parentHtml || '<p class="hint">未设定</p>'}</details>` +
+    `<details class="magic-details"><summary>原著关联</summary>${connHtml}</details>` +
+    `<details class="magic-details" open><summary>家族 NPC（${(track.npcTies || []).length}）</summary><div class="family-npc-list">${npcHtml}</div></details>` +
+    `<details class="magic-details"><summary>近期家庭线（${track.lettersReceived || 0} 封信）</summary>${eventsHtml}</details>` +
+    `<details class="magic-details"><summary>待触发互动</summary><ul class="family-beat-list">${beatHtml}</ul></details>`;
 }
 
 export function renderTimetablePanel(state) {

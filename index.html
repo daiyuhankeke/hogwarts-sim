@@ -51,12 +51,59 @@
             </select>
           </label>
           <label>血统 *
-            <select name="bloodStatus" required>
+            <select name="bloodStatus" id="blood-status-select" required>
               <option value="纯血">纯血</option>
               <option value="混血">混血</option>
               <option value="麻瓜出身">麻瓜出身</option>
             </select>
           </label>
+          <div class="full-width family-section" id="family-section">
+            <span class="field-label">家庭背景</span>
+            <p class="hint" id="family-section-hint">纯血或混血可选择神圣二十八家族；混血者父母一方必为麻瓜或麻瓜出身巫师。若家族鄙视麻瓜而父母跨血统结合，则被家族除名。</p>
+            <div id="wizard-family-row" class="family-grid" hidden>
+              <label>巫师家族（纯血/混血巫师侧）
+                <select name="wizardFamily" id="wizard-family-select">
+                  <option value="random">随机神圣二十八家族</option>
+                </select>
+              </label>
+              <label id="custom-surname-wrap" hidden>自拟家族姓氏
+                <input name="customFamilySurname" placeholder="例：Rookwood" maxlength="30">
+              </label>
+              <label id="wizard-parent-side-wrap" hidden>巫师血统来自
+                <select name="wizardParentSide">
+                  <option value="father">父亲</option>
+                  <option value="mother">母亲</option>
+                </select>
+              </label>
+            </div>
+            <div class="family-grid" id="player-attitude-row">
+              <label id="player-muggle-attitude-wrap">对麻瓜/麻瓜出身的态度
+                <select name="playerMuggleAttitude" id="player-muggle-attitude"></select>
+              </label>
+            </div>
+            <label class="checkbox-label">
+              <input type="checkbox" name="familyAutoGenerate" checked>
+              自动生成父母详情（性格、外貌、职业、原著关联）
+            </label>
+            <div id="family-manual-panel" class="family-manual" hidden>
+              <div class="family-grid">
+                <label>父亲姓名<input name="fatherName" maxlength="40" placeholder="留空则随机"></label>
+                <label>父亲职业<input name="fatherOccupation" maxlength="60" placeholder="留空则随机"></label>
+                <label>父亲性格<input name="fatherPersonality" maxlength="40" placeholder="例：温和寡言"></label>
+                <label>父亲外貌<input name="fatherAppearance" maxlength="80" placeholder="留空则随机"></label>
+                <label>母亲姓名<input name="motherName" maxlength="40"></label>
+                <label>母亲职业<input name="motherOccupation" maxlength="60"></label>
+                <label>母亲性格<input name="motherPersonality" maxlength="40"></label>
+                <label>母亲外貌<input name="motherAppearance" maxlength="80"></label>
+              </div>
+              <span class="field-label">与原著人物/家庭的可能关联（可多选，留空则随机）</span>
+              <div id="canon-connection-chips" class="talent-grid"></div>
+            </div>
+            <div class="family-actions">
+              <button type="button" id="family-preview-btn" class="btn btn-secondary btn-small">预览家庭背景</button>
+            </div>
+            <pre id="family-preview" class="family-preview" hidden></pre>
+          </div>
           <label class="full-width">外貌特征
             <input name="appearance" value="深棕卷发，琥珀色眼睛，气质安静" placeholder="例：深棕卷发，琥珀色眼睛，左手腕有小疤" maxlength="80">
           </label>
@@ -148,6 +195,10 @@
           </div>
         </div>
         <aside>
+          <div class="card">
+            <h2>家庭</h2>
+            <div id="family-panel"><p class="hint">等待开始……</p></div>
+          </div>
           <div class="card">
             <h2>课表</h2>
             <div id="timetable-panel"><p class="hint">等待开始……</p></div>
