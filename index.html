@@ -28,9 +28,13 @@
           <label class="full-width">邀请码（若部署时设置了 INVITE_CODE）
             <input id="invite-code" placeholder="例：hogwarts2026" maxlength="40">
           </label>
-          <label>姓名
-            <input name="name" value="艾拉·格林" placeholder="例：艾拉·陈" maxlength="20">
+          <label>名
+            <input name="givenName" value="艾拉" placeholder="例：艾拉" maxlength="12" required>
           </label>
+          <label id="surname-wrap">姓
+            <input name="surname" id="player-surname" value="格林" placeholder="自拟姓氏" maxlength="20">
+          </label>
+          <p id="surname-hint" class="hint full-width">纯血/混血选神圣二十八家族时，姓氏随家族；否则请自拟。</p>
           <label>学院 *
             <select name="house" required>
               <option value="格兰芬多">格兰芬多</option>
@@ -65,9 +69,6 @@
                 <select name="wizardFamily" id="wizard-family-select">
                   <option value="random">随机神圣二十八家族</option>
                 </select>
-              </label>
-              <label id="custom-surname-wrap" hidden>自拟家族姓氏
-                <input name="customFamilySurname" placeholder="例：Rookwood" maxlength="30">
               </label>
               <label id="wizard-parent-side-wrap" hidden>巫师血统来自
                 <select name="wizardParentSide">
@@ -196,6 +197,10 @@
         </div>
         <aside>
           <div class="card">
+            <h2>毕业后</h2>
+            <div id="career-panel"><p class="hint">等待开始……</p></div>
+          </div>
+          <div class="card">
             <h2>家庭</h2>
             <div id="family-panel"><p class="hint">等待开始……</p></div>
           </div>
@@ -226,6 +231,16 @@
     <div class="loader-box">
       <div class="spinner"></div>
       <p>猫头鹰正在传递消息……</p>
+    </div>
+  </div>
+
+  <div id="career-modal" class="career-modal" hidden>
+    <div class="career-modal-backdrop"></div>
+    <div class="career-modal-box card">
+      <h2>🎓 毕业典礼 · 选择你的道路</h2>
+      <p class="hint">共 29 个方向，按魔法部 / 体制外分组。灰色为 O.W.L. 未达标；社团经历可作软提示参考。</p>
+      <div id="career-choices" class="career-choices"></div>
+      <button type="button" id="career-modal-close" class="btn btn-secondary btn-small">稍后再选</button>
     </div>
   </div>
 

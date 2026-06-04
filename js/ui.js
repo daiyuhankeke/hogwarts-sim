@@ -4,6 +4,14 @@ import { ACHIEVEMENTS, getClubNames, getGossipLabel, getPlaythroughHook } from '
 import { getCanonicalPlotContext } from './canonical-storyline.js';
 import { WEEKDAYS, PERIOD_LABELS, getTodayClasses, getTodayEveningClasses, SUBJECT_CATALOG } from './timetable.js';
 import { getAttitudeClass, getToneLabel, migrateFamilyTrack, getSuggestedFamilyBeats } from './family-interactions.js';
+import {
+  getCareerOptions,
+  getCareerById,
+  isGraduationReady,
+  isCareerPrepPhase,
+  formatIncomeRange,
+  renderStars,
+} from './career-system.js';
 
 const HOUSE_COLORS = {
   '格兰芬多': { primary: '#740001', accent: '#d3a625' },
@@ -18,25 +26,49 @@ export function applyHouseTheme(house) {
   document.documentElement.style.setProperty('--house-accent', colors.accent);
 }
 
+function stripRomanceFields(line) {
+  return line
+    .replace(/\s*\|\s*当前男主[：:][^|]*/g, '')
+    .replace(/\s*\|\s*关系[：:][^|]*/g, '')
+    .replace(/\s*\|\s*好感[：:][^|]*/g, '')
+    .replace(/\s*\|\s*(?=\|)/g, '')
+    .trim();
+}
+
+function buildStatusLine(state) {
+  const target = state.currentTarget || '无';
+  const showRomance = target !== '无';
+  const mood = state.player.mood;
+  const magicRank = state.magic?.rank || '—';
+
+  let line =
+    `第${state.time.week}周 ${state.time.weekday} | 霍格沃茨 | ${state.scene.weather} | ` +
+    `场景：${state.scene.location}`;
+
+  if (showRomance) {
+    const rel = state.relationships[target];
+    const stage = rel?.stage ?? '—';
+    const affection = rel?.affection ?? 0;
+    line += ` | 当前男主：${target} | 关系：${stage} | 好感：${affection}`;
+  }
+
+  line += ` | 心情：${mood} | 魔法：${magicRank}`;
+  return line;
+}
+
 export function renderStatusBar(state, statusLine) {
   const el = document.getElementById('status-bar');
   if (!el) return;
 
+  const target = state?.currentTarget || '无';
+  const showRomance = target !== '无';
+
   if (statusLine) {
-    el.textContent = statusLine;
+    el.textContent = showRomance ? statusLine : stripRomanceFields(statusLine);
     return;
   }
 
-  const target = state.currentTarget || '无';
-  const rel = target !== '无' ? state.relationships[target] : null;
-  const stage = rel?.stage ?? '—';
-  const affection = rel?.affection ?? 0;
-  const mood = state.player.mood;
-  const magicRank = state.magic?.rank || '—';
-
-  el.textContent =
-    `第${state.time.week}周 ${state.time.weekday} | 霍格沃茨 | ${state.scene.weather} | ` +
-    `场景：${state.scene.location} | 当前男主：${target} | 关系：${stage} | 好感：${affection} | 心情：${mood} | 魔法：${magicRank}`;
+  el.textContent = buildStatusLine(state);
 }
 
 export function renderNarrative(text) {
@@ -315,6 +347,133 @@ export function renderProgressPanel(state) {
     rumors +
     `<details class="magic-details"><summary>回忆 (${(p.memories || []).length})</summary>${memHtml}</details>` +
     `<details class="magic-details"><summary>成就 (${achUnlocked.size})</summary><div class="magic-notable">${achHtml}</div></details>`;
+}
+
+export function renderCareerPanel(state) {
+  const el = document.getElementById('career-panel');
+  if (!el) return;
+
+  const chosen = state?.career?.chosenId;
+  if (chosen) {
+    const career = getCareerById(chosen);
+    if (!career) {
+      el.innerHTML = `<p class="hint">职业：${escapeHtml(state.career.chosenName || chosen)}</p>`;
+      return;
+    }
+    el.innerHTML =
+      `<div class="career-chosen-banner">🎓 ${escapeHtml(career.name)}</div>` +
+      `<p class="career-tagline">${escapeHtml(career.tagline)}</p>` +
+      `<div class="career-stats">` +
+      `<span>💰 ${escapeHtml(formatIncomeRange(career.income))}</span>` +
+      `<span>⚠ 风险 ${renderStars(career.risk)}</span>` +
+      `<span>🕊 自由 ${renderStars(career.freedom)}</span>` +
+      `</div>` +
+      `<p class="hint">${escapeHtml(career.traits.join(' · '))}</p>`;
+    return;
+  }
+
+  if (isGraduationReady(state)) {
+    el.innerHTML =
+      '<div class="career-prep-banner career-ready">🎓 学年末 · 可以择业了</div>' +
+      '<p class="hint">点击下方按钮或选项，选择毕业后的职业道路。</p>' +
+      '<button type="button" id="open-career-modal-btn" class="btn btn-primary btn-small">选择职业</button>';
+    return;
+  }
+
+  if (isCareerPrepPhase(state)) {
+    el.innerHTML =
+      '<div class="career-prep-banner">📋 N.E.W.T. 冲刺 · 职业规划</div>' +
+      `<p class="hint">第 ${state.time?.week ?? '?'} 周 · 学年末（第 34 周）将开放正式择业。可先查看 O.W.L. 是否满足心仪职业门槛。</p>`;
+    return;
+  }
+
+  if ((state?.profile?.year ?? 0) >= 6) {
+    el.innerHTML = '<p class="hint">七年级学年末将根据 O.W.L. 成绩开放择业。</p>';
+    return;
+  }
+
+  el.innerHTML = '<p class="hint">五年级 O.W.L. 成绩将影响毕业后可选职业。</p>';
+}
+
+let careerSelectHandler = null;
+
+export function openCareerSelectionModal(state, onSelect) {
+  const modal = document.getElementById('career-modal');
+  const list = document.getElementById('career-choices');
+  if (!modal || !list) return;
+
+  careerSelectHandler = onSelect;
+  list.innerHTML = '';
+
+  const groups = [
+    { key: 'ministry', label: '魔法部系统' },
+    { key: 'independent', label: '体制外 / 自由职业' },
+  ];
+
+  for (const group of groups) {
+    const items = getCareerOptions(state).filter((o) => o.career.category === group.key);
+    if (!items.length) continue;
+
+    const heading = document.createElement('h3');
+    heading.className = 'career-group-title';
+    heading.textContent = group.label;
+    list.appendChild(heading);
+
+    for (const item of items) {
+      list.appendChild(buildCareerCard(item, onSelect));
+    }
+  }
+
+  modal.hidden = false;
+}
+
+function buildCareerCard(item, onSelect) {
+  const { career, eligible, reasons, softHints } = item;
+  const card = document.createElement('div');
+  card.className = `career-card${eligible ? '' : ' career-card-locked'}`;
+
+  const stats =
+    `<div class="career-card-stats">` +
+    `<span>💰 ${escapeHtml(formatIncomeRange(career.income))}</span>` +
+    `<span>稳定 ${renderStars(career.stability)}</span>` +
+    `<span>风险 ${renderStars(career.risk)}</span>` +
+    `<span>自由 ${renderStars(career.freedom)}</span>` +
+    `</div>`;
+
+  const reqNote = `<p class="career-req">${escapeHtml(career.requirementNote)}</p>`;
+  const blockReason = !eligible && reasons.length
+    ? `<p class="career-block">${reasons.map((r) => escapeHtml(r)).join('；')}</p>`
+    : '';
+  const soft = softHints?.length
+    ? `<p class="career-soft">${softHints.map((h) => escapeHtml(h)).join('；')}</p>`
+    : '';
+
+  card.innerHTML =
+    `<div class="career-card-head">` +
+    `<strong>${escapeHtml(career.name)}</strong>` +
+    `<span class="career-card-tag">${escapeHtml(career.traits.slice(0, 2).join(' · '))}</span>` +
+    `</div>` +
+    `<p class="career-card-desc">${escapeHtml(career.tagline)}</p>` +
+    stats + reqNote + blockReason + soft;
+
+  if (eligible) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn btn-primary btn-small career-select-btn';
+    btn.textContent = '选择此职业';
+    btn.addEventListener('click', () => {
+      if (onSelect) onSelect(career.id);
+    });
+    card.appendChild(btn);
+  }
+
+  return card;
+}
+
+export function closeCareerSelectionModal() {
+  const modal = document.getElementById('career-modal');
+  if (modal) modal.hidden = true;
+  careerSelectHandler = null;
 }
 
 export function renderFamilyPanel(state) {

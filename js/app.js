@@ -28,6 +28,9 @@ import {
   renderFamilyPanel,
   renderTimetablePanel,
   renderEventHints,
+  renderCareerPanel,
+  openCareerSelectionModal,
+  closeCareerSelectionModal,
   setLoading,
   showError,
   hideError,
@@ -43,17 +46,28 @@ import { formatTodayClassHint } from './timetable.js';
 import { toggleAudio, isAudioEnabled, stopAmbient } from './ambient-audio.js';
 import { resolveOptions, buildContextualOptions } from './contextual-options.js';
 import {
+  isGraduationReady,
+  selectCareer,
+  buildGraduationCareerOptions,
+  getCareerById,
+} from './career-system.js';
+import {
   SACRED_28_FAMILIES,
   PLAYER_MUGGLE_ATTITUDES,
   CANON_CONNECTION_OPTIONS,
   collectFamilyFromForm,
   formatFamilyForPrompt,
+  getFamilyById,
+  resolvePlayerNameFromForm,
+  resolvePlayerSurname,
+  isSacred28FamilySelection,
 } from './family-background.js';
 
 let gameState = null;
 let currentSlot = 0;
 let lastResponse = null;
 let pendingWand = null;
+let careerModalDismissed = false;
 
 const API_URL = '/api/chat';
 const WAND_API_URL = '/api/wand';
@@ -70,6 +84,7 @@ function init() {
   bindGameControls();
   bindSaveControls();
   bindInviteCode();
+  bindCareerControls();
   initCharacterFormOptions();
 
   const saved = loadGame(0);
@@ -192,13 +207,67 @@ function initFamilyFormOptions() {
   }
 
   updateFamilyFormVisibility();
+  syncPlayerSurnameField();
+}
+
+function syncPlayerSurnameField() {
+  const form = document.getElementById('character-form');
+  const surnameInput = document.getElementById('player-surname');
+  const hintEl = document.getElementById('surname-hint');
+  if (!form || !surnameInput) return;
+
+  const blood = form.bloodStatus?.value || '纯血';
+  const familyId = form.wizardFamily?.value;
+  const isMuggleborn = blood === '麻瓜出身';
+  const isCustom = familyId === 'custom';
+  const isS28 = isSacred28FamilySelection(form);
+
+  if (isMuggleborn || isCustom) {
+    surnameInput.disabled = false;
+    surnameInput.readOnly = false;
+    surnameInput.placeholder = isMuggleborn ? '自拟姓氏，如：格林' : '自拟纯血姓氏，如：Rookwood';
+    if (hintEl) {
+      hintEl.textContent = isMuggleborn
+        ? '麻瓜出身：姓氏自拟。'
+        : '非神圣二十八家族：姓氏与家族名自拟。';
+    }
+    return;
+  }
+
+  if (familyId === 'random') {
+    surnameInput.disabled = true;
+    surnameInput.readOnly = true;
+    surnameInput.value = resolvePlayerSurname(form);
+    surnameInput.placeholder = '';
+    if (hintEl) hintEl.textContent = '已随机归属神圣二十八家族，姓氏随家族（同名同院同血统结果固定）。';
+    return;
+  }
+
+  if (isS28 && familyId) {
+    const fam = getFamilyById(familyId);
+    surnameInput.disabled = true;
+    surnameInput.readOnly = true;
+    surnameInput.value = fam?.label || '';
+    if (hintEl) hintEl.textContent = `神圣二十八家族·${fam?.label || ''}，姓氏随家族。`;
+  }
 }
 
 function bindFamilyFormEvents() {
   const form = document.getElementById('character-form');
-  form?.bloodStatus?.addEventListener('change', updateFamilyFormVisibility);
-  document.getElementById('blood-status-select')?.addEventListener('change', updateFamilyFormVisibility);
-  form?.wizardFamily?.addEventListener('change', updateFamilyFormVisibility);
+  form?.bloodStatus?.addEventListener('change', () => {
+    updateFamilyFormVisibility();
+    syncPlayerSurnameField();
+  });
+  document.getElementById('blood-status-select')?.addEventListener('change', () => {
+    updateFamilyFormVisibility();
+    syncPlayerSurnameField();
+  });
+  form?.wizardFamily?.addEventListener('change', () => {
+    updateFamilyFormVisibility();
+    syncPlayerSurnameField();
+  });
+  form?.givenName?.addEventListener('input', syncPlayerSurnameField);
+  form?.house?.addEventListener('change', syncPlayerSurnameField);
   form?.familyAutoGenerate?.addEventListener('change', () => {
     const manual = document.getElementById('family-manual-panel');
     const auto = form?.familyAutoGenerate?.checked;
@@ -227,7 +296,6 @@ function updateFamilyFormVisibility() {
   if (!form) return;
   const blood = form.bloodStatus?.value || form.elements?.bloodStatus?.value || '纯血';
   const wizardRow = document.getElementById('wizard-family-row');
-  const customWrap = document.getElementById('custom-surname-wrap');
   const sideWrap = document.getElementById('wizard-parent-side-wrap');
   const attitudeRow = document.getElementById('player-attitude-row');
   const hintEl = document.getElementById('family-section-hint');
@@ -241,16 +309,13 @@ function updateFamilyFormVisibility() {
 
   if (hintEl) {
     if (isMuggleborn) {
-      hintEl.textContent = '麻瓜出身：父母均为麻瓜（或一方为麻瓜、一方为麻瓜出身亦可）。不可选择神圣二十八家族。';
+      hintEl.textContent = '麻瓜出身：父母均为麻瓜；姓氏在上方自拟。不可选择神圣二十八家族。';
     } else if (isHalf) {
-      hintEl.textContent = '混血：请选择巫师侧家族（神圣二十八）；另一方将自动设为麻瓜或麻瓜出身巫师。若该家族鄙视麻瓜，父母会因跨血统结合被除名。';
+      hintEl.textContent = '混血：请选择巫师侧神圣二十八家族（姓氏随家族），或选「自拟」并填写姓氏。';
     } else {
-      hintEl.textContent = '纯血：可归属神圣二十八家族；家族对麻瓜的态度沿用原著设定。';
+      hintEl.textContent = '纯血：可选神圣二十八（姓氏随家族）或自拟纯血姓氏。';
     }
   }
-
-  const familyId = form.wizardFamily?.value;
-  if (customWrap) setElVisible(customWrap, isWizardBlood && familyId === 'custom');
 
   const manual = document.getElementById('family-manual-panel');
   if (manual) manual.hidden = form.familyAutoGenerate?.checked !== false;
@@ -272,8 +337,11 @@ function updateTalentSummary() {
 }
 
 function collectProfileFromForm(form) {
+  const { givenName, surname, name } = resolvePlayerNameFromForm(form);
   return {
-    name: form.name.value,
+    name,
+    givenName,
+    surname,
     house: form.house.value,
     year: Number(form.year.value),
     bloodStatus: form.bloodStatus.value,
@@ -354,6 +422,13 @@ function bindCharacterForm() {
       return;
     }
 
+    const blood = form.bloodStatus.value;
+    const familyId = form.wizardFamily?.value;
+    if ((blood === '麻瓜出身' || familyId === 'custom') && !form.surname?.value?.trim()) {
+      showCreateError('请填写姓氏');
+      return;
+    }
+
     const profile = collectProfileFromForm(form);
 
     gameState = createInitialState(profile);
@@ -412,11 +487,31 @@ function bindGameControls() {
     if (confirm('开始新游戏？未保存的进度将丢失。')) {
       gameState = null;
       pendingWand = null;
+      careerModalDismissed = false;
       renderWandPreview(document.getElementById('wand-preview'), null);
       const startBtn = document.getElementById('start-game-btn');
       if (startBtn) startBtn.disabled = true;
+      closeCareerSelectionModal();
       clearSceneVisual();
       showScreen('create-screen');
+    }
+  });
+}
+
+function bindCareerControls() {
+  document.getElementById('career-modal-close')?.addEventListener('click', () => {
+    careerModalDismissed = true;
+    closeCareerSelectionModal();
+  });
+  document.querySelector('.career-modal-backdrop')?.addEventListener('click', () => {
+    careerModalDismissed = true;
+    closeCareerSelectionModal();
+  });
+
+  const panel = document.getElementById('career-panel');
+  panel?.addEventListener('click', (e) => {
+    if (e.target.id === 'open-career-modal-btn' && gameState && isGraduationReady(gameState)) {
+      openCareerSelectionModal(gameState, handleCareerSelect);
     }
   });
 }
@@ -491,16 +586,57 @@ function renderGameUI() {
   renderRelationships(gameState);
   renderMagicPanel(gameState);
   renderProgressPanel(gameState);
+  renderCareerPanel(gameState);
   renderFamilyPanel(gameState);
   renderTimetablePanel(gameState);
   const ctx = buildEventContext(gameState);
   renderEventHints(getUpcomingEvents(gameState).map((e) => e.label), ctx.endingHint);
   document.getElementById('player-name').textContent = gameState.profile.name;
   document.getElementById('player-house').textContent = `${gameState.profile.house} · ${gameState.profile.year}年级`;
+  maybeOpenCareerModal();
+}
+
+function maybeOpenCareerModal() {
+  if (!gameState || !isGraduationReady(gameState) || careerModalDismissed) return;
+  openCareerSelectionModal(gameState, handleCareerSelect);
+}
+
+function handleCareerSelect(careerId) {
+  if (!gameState) return;
+  try {
+    const career = getCareerById(careerId);
+    gameState = selectCareer(gameState, careerId);
+    careerModalDismissed = false;
+    if (gameState.progression && !gameState.progression.achievements.includes('career_chosen')) {
+      gameState.progression.achievements.push('career_chosen');
+    }
+    saveGame(gameState, currentSlot);
+    closeCareerSelectionModal();
+    renderGameUI();
+    renderOptions(getOptionsForState(), handleOptionSelect);
+    renderNarrative(
+      `🎓 ${gameState.profile.name} 从霍格沃茨毕业了。\n\n` +
+      `她选择了「${career?.name || gameState.career.chosenName}」作为今后的道路。` +
+      `${career ? `\n\n${career.tagline}` : ''}\n\n` +
+      '选择下方行动，或直接输入自定义行动，开启毕业后的新篇章。'
+    );
+    hideError();
+  } catch (err) {
+    showError(err.message);
+  }
 }
 
 async function handleOptionSelect(option, customDetail) {
   hideError();
+  if (option.careerId) {
+    handleCareerSelect(option.careerId);
+    return;
+  }
+  if (option.openCareerModal && gameState && isGraduationReady(gameState)) {
+    careerModalDismissed = false;
+    openCareerSelectionModal(gameState, handleCareerSelect);
+    return;
+  }
   let actionText = `${option.id}. ${option.text}`;
   if (customDetail) actionText = `F. 自定义行动：${customDetail}`;
 
@@ -629,6 +765,9 @@ function bindInviteCode() {
 
 function getOptionsForState(aiOptions) {
   if (!gameState) return buildContextualOptions(null);
+  if (isGraduationReady(gameState)) {
+    return buildGraduationCareerOptions(gameState);
+  }
   const narrative = gameState.history?.[gameState.history.length - 1]?.narrative || '';
   const classHint = formatTodayClassHint(gameState);
   return resolveOptions(aiOptions, gameState, narrative, classHint);

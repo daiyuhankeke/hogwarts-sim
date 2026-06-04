@@ -4,6 +4,8 @@ import { getPlaythroughHook, getClubNames, getGossipLabel } from './progression.
 import { getTimetableContext } from './timetable.js';
 import { getCanonicalPlotContext, getCanonEventsForCalendar } from './canonical-storyline.js';
 import { getFamilyInteractionContext } from './family-interactions.js';
+import { getSceneOptionHint, detectSceneContext, isAtHogwarts } from './contextual-options.js';
+import { getCareerContext } from './career-system.js';
 
 const EVENT_CALENDAR = [
   { id: 'opening_feast', week: 1, label: '开学宴会' },
@@ -101,6 +103,8 @@ export function buildEventContext(state) {
   const timetable = getTimetableContext(state);
   const canonPlot = getCanonicalPlotContext(state);
   const familyInteraction = getFamilyInteractionContext(state);
+  const lastNarrative = state.history?.[state.history.length - 1]?.narrative || '';
+  const sceneCtx = detectSceneContext(state, lastNarrative);
 
   return {
     upcomingEvents: upcoming.map((e) => e.label),
@@ -129,7 +133,11 @@ export function buildEventContext(state) {
         }
       : null,
     familyInteraction,
-    dmReminder: '每 5 回合须推进至少一项：学业/感情/学院事件/魔法/社团/原著主线/家庭线。大事件准备期请给准备阶段选项。主线须对齐 canonPlot。'
+    career: getCareerContext(state),
+    sceneOptionHint: getSceneOptionHint(state, lastNarrative),
+    detectedScene: sceneCtx.label,
+    atHogwarts: isAtHogwarts(state, lastNarrative),
+    dmReminder: '每 5 回合须推进至少一项：学业/感情/学院事件/魔法/社团/原著主线/家庭线。大事件准备期请给准备阶段选项。主线须对齐 canonPlot。options 必须与本回合 narrative 末尾场景一致，见 sceneOptionHint。'
       + (familyInteraction.familyPrompt ? ` ${familyInteraction.familyPrompt}` : ''),
   };
 }

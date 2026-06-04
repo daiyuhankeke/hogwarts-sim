@@ -9,6 +9,7 @@ import { createFallbackWand } from './wand-system.js';
 import { createInitialProgression, migrateProgression, mergeProgressionUpdate, processAfterTurn } from './progression.js';
 import { createTimetable, migrateTimetable, mergeTimetableUpdate } from './timetable.js';
 import { migrateCanonPlot, mergeCanonPlotUpdate } from './canonical-storyline.js';
+import { createInitialCareer, migrateCareer } from './career-system.js';
 
 const STORAGE_KEY = 'hogwarts-sim-save';
 const SLOT_PREFIX = 'hogwarts-sim-slot-';
@@ -79,6 +80,7 @@ export function createInitialState(rawProfile) {
     magic: createInitialMagic(profile),
     progression: createInitialProgression(profile),
     timetable: createTimetable(profile),
+    career: createInitialCareer(),
   };
 }
 
@@ -132,6 +134,13 @@ export function mergeStateUpdate(state, update) {
     next.timetable = mergeTimetableUpdate(next.timetable || migrateTimetable(next), update.timetable);
   }
 
+  if (update.career) {
+    next.career = { ...(next.career || migrateCareer(next)), ...update.career };
+    if (update.career.chosenId) {
+      next.flags = { ...next.flags, graduated: true };
+    }
+  }
+
   return next;
 }
 
@@ -164,6 +173,7 @@ export function loadGame(slot = 0) {
     if (state.profile && !state.profile.family?.summary) {
       state.profile = normalizeProfile(state.profile);
     }
+    state.career = migrateCareer(state);
     return state;
   } catch {
     return null;
@@ -191,6 +201,7 @@ export function importSave(jsonString) {
   if (state.profile && !state.profile.family?.summary) {
     state.profile = normalizeProfile(state.profile);
   }
+  state.career = migrateCareer(state);
   return state;
 }
 

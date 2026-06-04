@@ -488,15 +488,74 @@ export function formatFamilyForPrompt(family) {
   return text;
 }
 
+export function resolveRandomSacred28Family(givenName, house, bloodStatus) {
+  const seed = hashStr(`${givenName}|${house}|${bloodStatus}|random`);
+  const rng = makeRng(seed);
+  return SACRED_28_FAMILIES[Math.floor(rng() * SACRED_28_FAMILIES.length)];
+}
+
+export function resolveRandomSacred28Label(givenName, house, bloodStatus) {
+  return resolveRandomSacred28Family(givenName, house, bloodStatus).label;
+}
+
+/** 根据表单血统与家族选择解析玩家姓氏 */
+export function resolvePlayerSurname(form) {
+  const bloodStatus = form.bloodStatus?.value || '混血';
+  const surnameInput = (form.surname?.value || '').trim();
+
+  if (bloodStatus === '麻瓜出身') {
+    return surnameInput || '格林';
+  }
+
+  const familyId = form.wizardFamily?.value || 'random';
+  if (familyId === 'custom') {
+    return surnameInput;
+  }
+  if (familyId !== 'random') {
+    return getFamilyById(familyId)?.label || surnameInput;
+  }
+
+  const givenName = (form.givenName?.value || '').trim() || '艾拉';
+  return resolveRandomSacred28Label(givenName, form.house?.value || '', bloodStatus);
+}
+
+export function resolveWizardFamilyIdFromForm(form) {
+  const bloodStatus = form.bloodStatus?.value || '混血';
+  if (bloodStatus === '麻瓜出身') return null;
+  const familyId = form.wizardFamily?.value || 'random';
+  if (familyId === 'custom') return 'custom';
+  if (familyId !== 'random') return familyId;
+  const givenName = (form.givenName?.value || '').trim() || '艾拉';
+  return resolveRandomSacred28Family(givenName, form.house?.value || '', bloodStatus).id;
+}
+
+export function resolvePlayerNameFromForm(form) {
+  const givenName = (form.givenName?.value || form.name?.value || '').trim() || '艾拉';
+  const surname = resolvePlayerSurname(form);
+  const name = surname ? `${givenName}·${surname}` : givenName;
+  return { givenName, surname, name };
+}
+
+export function isSacred28FamilySelection(form) {
+  const bloodStatus = form.bloodStatus?.value;
+  if (bloodStatus === '麻瓜出身') return false;
+  const familyId = form.wizardFamily?.value;
+  return familyId && familyId !== 'custom';
+}
+
 export function formatFamilyPreview(family) {
   return formatFamilyForPrompt(family).replace(/\n/g, '\n');
 }
 
 export function collectFamilyFromForm(form) {
   const bloodStatus = form.bloodStatus?.value || '混血';
+  const { name } = resolvePlayerNameFromForm(form);
   const playerMuggleAttitude = bloodStatus === '麻瓜出身'
     ? null
     : (form.playerMuggleAttitude?.value || 'inherit');
+
+  const wizardFamilyId = resolveWizardFamilyIdFromForm(form);
+  const customFamilySurname = wizardFamilyId === 'custom' ? resolvePlayerSurname(form) : '';
 
   const manual = {
     father: {
@@ -516,10 +575,10 @@ export function collectFamilyFromForm(form) {
 
   return buildFamilyBackground({
     bloodStatus,
-    name: form.name?.value,
+    name,
     house: form.house?.value,
-    wizardFamilyId: bloodStatus === '麻瓜出身' ? null : (form.wizardFamily?.value || 'random'),
-    customFamilySurname: form.customFamilySurname?.value || '',
+    wizardFamilyId,
+    customFamilySurname,
     wizardParentSide: form.wizardParentSide?.value || 'father',
     playerMuggleAttitude,
     autoGenerate: form.familyAutoGenerate?.checked !== false,

@@ -87,8 +87,23 @@ export function computeNpcYears(playerYear) {
   return years;
 }
 
+function splitGivenName(fullName) {
+  const raw = (fullName || '').trim();
+  if (!raw) return { givenName: '艾拉', surname: '格林' };
+  const parts = raw.split('·');
+  if (parts.length >= 2) {
+    return { givenName: parts.slice(0, -1).join('·'), surname: parts[parts.length - 1] };
+  }
+  return { givenName: raw, surname: '' };
+}
+
 export function normalizeProfile(raw) {
-  const name = (raw.name || '').trim() || DEFAULT_NAME;
+  const givenName = (raw.givenName || '').trim() || splitGivenName(raw.name).givenName;
+  let surname = (raw.surname || '').trim() || splitGivenName(raw.name).surname;
+  const name = (raw.name || '').trim() || (surname ? `${givenName}·${surname}` : givenName) || DEFAULT_NAME;
+  if (!surname && name.includes('·')) {
+    surname = name.split('·').pop();
+  }
   const appearance = (raw.appearance || '').trim() || DEFAULT_APPEARANCE;
   const talents = Array.isArray(raw.talents)
     ? raw.talents.filter(Boolean)
@@ -101,6 +116,8 @@ export function normalizeProfile(raw) {
 
   return {
     name,
+    givenName,
+    surname,
     house: raw.house,
     year: Number(raw.year),
     bloodStatus,

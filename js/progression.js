@@ -35,6 +35,7 @@ export const ACHIEVEMENTS = [
   { id: 'club_active', name: '社团达人', desc: '参加 3 次以上社团活动' },
   { id: 'gossip_peak', name: '话题人物', desc: '流言等级达到最高' },
   { id: 'he_any', name: '幸福结局', desc: '达成任意 HE' },
+  { id: 'career_chosen', name: '职场新人', desc: '毕业后选定职业' },
 ];
 
 export const WAND_AFFINITY_HINTS = {
