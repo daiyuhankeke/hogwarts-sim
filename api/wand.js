@@ -1,40 +1,10 @@
 import { generateWandWithAI, generateFallbackWand } from '../lib/generateWand.js';
 import { checkRateLimit, verifyInviteCode } from '../lib/rateLimit.js';
-
-function sendJson(res, status, data) {
-  if (typeof res.status === 'function' && typeof res.json === 'function') {
-    return res.status(status).json(data);
-  }
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify(data));
-}
-
-function getBody(req) {
-  if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
-    return req.body;
-  }
-  if (typeof req.body === 'string') {
-    try {
-      return JSON.parse(req.body);
-    } catch {
-      return {};
-    }
-  }
-  return {};
-}
+import { sendJson, getBody, setCorsHeaders, handleOptions } from '../lib/http.js';
 
 export default async function handler(req, res) {
-  if (typeof res.setHeader === 'function') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  }
-
-  if (req.method === 'OPTIONS') {
-    if (typeof res.status === 'function') return res.status(204).end();
-    res.writeHead(204);
-    return res.end();
-  }
+  setCorsHeaders(res);
+  if (handleOptions(req, res)) return;
 
   if (req.method !== 'POST') {
     return sendJson(res, 405, { error: '仅支持 POST' });

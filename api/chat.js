@@ -1,43 +1,17 @@
 import { buildSystemPrompt } from '../lib/loadPrompts.js';
 import { callAI, buildMessages } from '../lib/callAI.js';
-import { extractJson, validateResponse } from '../lib/parseResponse.js';
+import { compactStateForAI } from '../lib/compactState.js';
+import { extractJson, validateResponse, buildJsonRetryHint } from '../lib/parseResponse.js';
+import { sanitizeStateUpdate } from '../lib/validateStateUpdate.js';
 import { checkRateLimit, verifyInviteCode } from '../lib/rateLimit.js';
 import { checkCanonicalViolations, buildCanonicalRetryHint } from '../lib/canonicalGuard.js';
+import { sendJson, getBody, setCorsHeaders, handleOptions } from '../lib/http.js';
 
-function sendJson(res, status, data) {
-  if (typeof res.status === 'function' && typeof res.json === 'function') {
-    return res.status(status).json(data);
-  }
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
-  res.end(JSON.stringify(data));
-}
-
-function getBody(req) {
-  if (req.body && typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
-    return req.body;
-  }
-  if (typeof req.body === 'string') {
-    try {
-      return JSON.parse(req.body);
-    } catch {
-      return {};
-    }
-  }
-  return {};
-}
+const MAX_JSON_ATTEMPTS = 2;
 
 export default async function handler(req, res) {
-  if (typeof res.setHeader === 'function') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  }
-
-  if (req.method === 'OPTIONS') {
-    if (typeof res.status === 'function') return res.status(204).end();
-    res.writeHead(204);
-    return res.end();
-  }
+  setCorsHeaders(res);
+  if (handleOptions(req, res)) return;
 
   if (req.method !== 'POST') {
     return sendJson(res, 405, { error: '仅支持 POST' });
@@ -45,7 +19,7 @@ export default async function handler(req, res) {
 
   try {
     const body = getBody(req);
-    const { state, action, history, eventContext, inviteCode } = body;
+    const { state, action, history, eventContext, inviteCode, isRetry = false } = body;
 
     if (!action) {
       return sendJson(res, 400, { error: '缺少 action' });
@@ -62,10 +36,11 @@ export default async function handler(req, res) {
       return sendJson(res, 429, { error: '今日请求次数已达上限，请明天再试' });
     }
 
-    const systemPrompt = buildSystemPrompt(state, eventContext);
-    let messages = buildMessages(systemPrompt, history, action);
+    const compactState = compactStateForAI(state);
+    const systemPrompt = buildSystemPrompt(compactState, eventContext);
+    let messages = buildMessages(systemPrompt, history, action, { summary: compactState?.summary });
 
-    let parsed = await requestAI(messages);
+    let parsed = await requestAI(messages, { isRetry });
 
     let canon = checkCanonicalViolations(parsed?.narrative);
     if (!canon.ok) {
@@ -74,64 +49,66 @@ export default async function handler(req, res) {
         { role: 'assistant', content: JSON.stringify({ narrative: parsed.narrative?.slice(0, 200) }) },
         { role: 'user', content: buildCanonicalRetryHint(canon) },
       ];
-      parsed = await requestAI(messages);
+      parsed = await requestAI(messages, { isRetry: true });
       canon = checkCanonicalViolations(parsed?.narrative);
       if (!canon.ok) {
         console.warn('canonical guard still failing:', canon.id, canon.reason);
       }
     }
 
+    if (parsed.stateUpdate) {
+      parsed = { ...parsed, stateUpdate: sanitizeStateUpdate(parsed.stateUpdate) };
+    }
+
     return sendJson(res, 200, parsed);
   } catch (err) {
     console.error('chat error:', err);
     if (err.status === 502) {
-      return sendJson(res, 502, { error: err.message, raw: err.raw });
+      const rawPreview = typeof err.raw === 'string' ? err.raw.slice(0, 500) : err.raw;
+      console.error('chat raw preview:', rawPreview);
+      return sendJson(res, 502, { error: err.message, raw: rawPreview });
     }
     return sendJson(res, 500, { error: err.message || '服务器错误' });
   }
 }
 
-async function requestAI(messages) {
-  let raw;
-  try {
-    raw = await callAI(messages);
-  } catch (aiErr) {
-    if (aiErr.message?.includes('response_format')) {
-      raw = await callAIWithoutJsonMode(messages);
-    } else {
-      throw aiErr;
+async function requestAI(messages, { isRetry = false } = {}) {
+  const temperature = isRetry ? 0.6 : 0.85;
+  let lastRaw = '';
+  let lastError = 'AI 未返回有效 JSON';
+
+  for (let attempt = 0; attempt < MAX_JSON_ATTEMPTS; attempt++) {
+    let raw;
+    try {
+      raw = await callAI(messages, { temperature, jsonMode: true });
+    } catch (aiErr) {
+      if (aiErr.message?.includes('response_format')) {
+        raw = await callAI(messages, { temperature, jsonMode: false });
+      } else {
+        throw aiErr;
+      }
+    }
+
+    lastRaw = raw;
+    const parsed = extractJson(raw);
+    const validation = validateResponse(parsed);
+
+    if (validation.valid) return parsed;
+
+    lastError = validation.error;
+    console.warn(`JSON parse attempt ${attempt + 1} failed:`, validation.error);
+
+    if (attempt < MAX_JSON_ATTEMPTS - 1) {
+      messages = [
+        ...messages,
+        { role: 'assistant', content: String(raw).slice(0, 400) },
+        { role: 'user', content: buildJsonRetryHint(validation.error) },
+      ];
     }
   }
 
-  const parsed = extractJson(raw);
-  const validation = validateResponse(parsed);
-
-  if (!validation.valid) {
-    const err = new Error(validation.error);
-    err.status = 502;
-    err.raw = raw;
-    throw err;
-  }
-
-  return parsed;
-}
-
-async function callAIWithoutJsonMode(messages) {
-  const apiKey = process.env.AI_API_KEY;
-  const baseUrl = (process.env.AI_BASE_URL || 'https://api.deepseek.com').replace(/\/$/, '');
-  const model = process.env.AI_MODEL || 'deepseek-chat';
-  const maxTokens = Number(process.env.AI_MAX_TOKENS || 2000);
-
-  const res = await fetch(`${baseUrl}/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: 0.85 }),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error?.message || 'AI API 错误');
-  return data.choices?.[0]?.message?.content || '';
+  const err = new Error(lastError);
+  err.status = 502;
+  err.raw = lastRaw;
+  throw err;
 }

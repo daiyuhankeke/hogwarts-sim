@@ -103,7 +103,7 @@ export function buildEventContext(state) {
   const timetable = getTimetableContext(state);
   const canonPlot = getCanonicalPlotContext(state);
   const familyInteraction = getFamilyInteractionContext(state);
-  const lastNarrative = state.history?.[state.history.length - 1]?.narrative || '';
+  const lastNarrative = state.lastNarrative || state.history?.[state.history.length - 1]?.narrative || '';
   const sceneCtx = detectSceneContext(state, lastNarrative);
 
   return {

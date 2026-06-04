@@ -86,7 +86,7 @@ hogwarts-sim/
 | `AI_API_KEY` | 是 | AI 服务 API 密钥 |
 | `AI_BASE_URL` | 否 | API 地址，默认 DeepSeek |
 | `AI_MODEL` | 否 | 模型名，默认 deepseek-chat |
-| `AI_MAX_TOKENS` | 否 | 单次最大 token，默认 2000 |
+| `AI_MAX_TOKENS` | 否 | 单次最大 token，默认 4096 |
 | `DAILY_LIMIT` | 否 | 每 IP 每日请求上限，0=不限 |
 | `INVITE_CODE` | 否 | 邀请码，不设则不校验 |
 

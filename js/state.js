@@ -14,6 +14,9 @@ import { createInitialCareer, migrateCareer } from './career-system.js';
 const STORAGE_KEY = 'hogwarts-sim-save';
 const SLOT_PREFIX = 'hogwarts-sim-slot-';
 const MAX_SLOTS = 3;
+const MAX_HISTORY = 10;
+/** 发给 AI 的历史 narrative 截断上限（存档保留完整 narrative） */
+const HISTORY_AI_NARRATIVE_LIMIT = 1500;
 
 const AFFECTION_STAGES = [
   { max: 20, stage: '陌生人' },
@@ -49,6 +52,41 @@ export function migrateRelationships(relationships) {
   return rel;
 }
 
+/** 统一存档/导入后的状态迁移与补全 */
+export function normalizeLoadedState(state) {
+  if (!state?.profile) return state;
+
+  if (state.relationships) state.relationships = migrateRelationships(state.relationships);
+  if (state.profile?.year) {
+    state.npcYears = { ...computeNpcYears(state.profile.year), ...(state.npcYears || {}) };
+  }
+  if (state.profile?.talent && !state.profile.talents) {
+    state.profile.talents = state.profile.talent.split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
+  }
+  state.magic = migrateMagic(state);
+  state.progression = migrateProgression(state);
+  state.timetable = migrateTimetable(state);
+  if (!state.flags) state.flags = {};
+  state.flags.canonPlot = migrateCanonPlot(state);
+  if (!state.profile.wand && state.profile.name) {
+    state.profile.wand = createFallbackWand(state.profile);
+  }
+  if (state.profile && !state.profile.family?.summary) {
+    state.profile = normalizeProfile(state.profile);
+  }
+  state.career = migrateCareer(state);
+
+  const lastHist = state.history?.[state.history.length - 1];
+  if (!state.lastNarrative && lastHist?.narrative) {
+    state.lastNarrative = lastHist.narrative;
+  }
+  if (!Array.isArray(state.lastOptions)) {
+    state.lastOptions = null;
+  }
+
+  return state;
+}
+
 export function createInitialState(rawProfile) {
   const profile = normalizeProfile(rawProfile);
   const year = profile.year;
@@ -77,6 +115,8 @@ export function createInitialState(rawProfile) {
     turnCount: 0,
     history: [],
     lastAction: null,
+    lastNarrative: null,
+    lastOptions: null,
     magic: createInitialMagic(profile),
     progression: createInitialProgression(profile),
     timetable: createTimetable(profile),
@@ -154,27 +194,7 @@ export function loadGame(slot = 0) {
   const raw = localStorage.getItem(key);
   if (!raw) return null;
   try {
-    const state = JSON.parse(raw);
-    if (state.relationships) state.relationships = migrateRelationships(state.relationships);
-    if (state.profile?.year) {
-      state.npcYears = { ...computeNpcYears(state.profile.year), ...(state.npcYears || {}) };
-    }
-    if (state.profile?.talent && !state.profile.talents) {
-      state.profile.talents = state.profile.talent.split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
-    }
-    state.magic = migrateMagic(state);
-    state.progression = migrateProgression(state);
-    state.timetable = migrateTimetable(state);
-    if (!state.flags) state.flags = {};
-    state.flags.canonPlot = migrateCanonPlot(state);
-    if (!state.profile.wand && state.profile.name) {
-      state.profile.wand = createFallbackWand(state.profile);
-    }
-    if (state.profile && !state.profile.family?.summary) {
-      state.profile = normalizeProfile(state.profile);
-    }
-    state.career = migrateCareer(state);
-    return state;
+    return normalizeLoadedState(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -189,20 +209,7 @@ export function importSave(jsonString) {
   if (!state.profile || !state.relationships) {
     throw new Error('无效的存档格式');
   }
-  state.relationships = migrateRelationships(state.relationships);
-  state.magic = migrateMagic(state);
-  state.progression = migrateProgression(state);
-  state.timetable = migrateTimetable(state);
-  if (!state.profile.wand && state.profile.name) {
-    state.profile.wand = createFallbackWand(state.profile);
-  }
-  if (!state.flags) state.flags = {};
-  state.flags.canonPlot = migrateCanonPlot(state);
-  if (state.profile && !state.profile.family?.summary) {
-    state.profile = normalizeProfile(state.profile);
-  }
-  state.career = migrateCareer(state);
-  return state;
+  return normalizeLoadedState(state);
 }
 
 export function listSaveSlots() {
@@ -214,12 +221,27 @@ export function listSaveSlots() {
   return slots;
 }
 
+/** 供 API history 使用的 narrative 截断（存档内保留完整文本） */
+export function narrativeForAI(narrative) {
+  if (!narrative) return '';
+  if (narrative.length <= HISTORY_AI_NARRATIVE_LIMIT) return narrative;
+  return `${narrative.slice(0, HISTORY_AI_NARRATIVE_LIMIT)}…（已截断）`;
+}
+
 export function addHistoryEntry(state, action, narrative) {
-  state.turnCount += 1;
-  state.history.push({ turn: state.turnCount, action, narrative: narrative.slice(0, 500) });
-  if (state.history.length > 10) state.history = state.history.slice(-10);
-  state.lastAction = action;
-  return state;
+  const next = structuredClone(state);
+  next.turnCount += 1;
+  next.history.push({
+    turn: next.turnCount,
+    action,
+    narrative,
+  });
+  if (next.history.length > MAX_HISTORY) {
+    next.history = next.history.slice(-MAX_HISTORY);
+  }
+  next.lastAction = action;
+  next.lastNarrative = narrative;
+  return next;
 }
 
 export { ROMANCE_TARGETS, MAX_SLOTS, YEAR_OFFSETS, computeNpcYears, processAfterTurn };
