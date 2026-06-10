@@ -4,6 +4,8 @@ import { getPlaythroughHook, getClubNames, getGossipLabel, getClubAvailabilityCo
 import { getTimetableContext } from './timetable.js';
 import { getCanonicalPlotContext, getCanonEventsForCalendar } from './canonical-storyline.js';
 import { getFamilyInteractionContext } from './family-interactions.js';
+import { getFamilyPoliticalContext } from './family-background.js';
+import { getTimeContext } from './time-system.js';
 
 function isAtHogwarts(state) {
   const loc = state?.scene?.location ?? '';
@@ -13,11 +15,13 @@ function isAtHogwarts(state) {
 function getSceneOptionHint(state, narrative = '') {
   const loc = state?.scene?.location ?? '未知';
   const weekday = state?.time?.weekday ?? '';
+  const clock = state?.time?.clock ?? '';
   const year = state?.profile?.year ?? 1;
   const tail = (narrative || '').slice(-500);
   const parts = [
     `scene.location=${loc}`,
     weekday ? `weekday=${weekday}` : '',
+    clock ? `clock=${clock}` : '',
     year >= 3 && weekday === '周六' ? '周六可去霍格莫德' : '',
     isAtHogwarts(state) ? '已入学，勿给出特快/国王十字/对角巷/分院前等过期选项' : '',
     tail ? `narrative 末尾：…${tail.slice(-220)}` : '',
@@ -98,6 +102,8 @@ export function buildEventContext(state) {
   const timetable = getTimetableContext(state);
   const canonPlot = getCanonicalPlotContext(state);
   const familyInteraction = getFamilyInteractionContext(state);
+  const familyPolitical = getFamilyPoliticalContext(state);
+  const timeContext = getTimeContext(state);
   const lastNarrative = state.lastNarrative || state.history?.[state.history.length - 1]?.narrative || '';
 
   return {
@@ -107,6 +113,7 @@ export function buildEventContext(state) {
     playthroughHook: hook,
     npcSchedule,
     timetable,
+    time: timeContext,
     canonPlot,
     housePoints: prog?.housePoints ?? 0,
     gossipLevel: prog?.gossip?.level ?? 0,
@@ -122,15 +129,19 @@ export function buildEventContext(state) {
           summary: state.profile.family.summary,
           familyLabel: state.profile.family.familyLabel,
           familyMuggleAttitude: state.profile.family.familyMuggleAttitude,
-          playerMuggleAttitude: state.profile.family.playerMuggleAttitudeLabel,
+          playerMuggleAttitude: state.profile.family.playerMuggleAttitudeDisplay
+            || state.profile.family.playerMuggleAttitudeLabel,
+          hasDarkTies: state.profile.family.hasDarkTies,
           canonConnections: state.profile.family.canonConnections || [],
         }
       : null,
     familyInteraction,
+    familyPolitical,
     sceneOptionHint: getSceneOptionHint(state, lastNarrative),
     atHogwarts: isAtHogwarts(state),
     dmReminder: '每 5 回合须推进至少一项：学业/学院事件/魔法/社团/原著主线/家庭线。大事件准备期请给准备阶段选项。主线须对齐 canonPlot。options 必须与本回合 narrative 末尾场景一致，见 sceneOptionHint。本作为霍格沃茨日常模拟，勿主动推进恋爱线或特殊恋爱结局。'
-      + (familyInteraction.familyPrompt ? ` ${familyInteraction.familyPrompt}` : ''),
+      + (familyInteraction.familyPrompt ? ` ${familyInteraction.familyPrompt}` : '')
+      + (familyPolitical.dmHint ? ` ${familyPolitical.dmHint}` : ''),
   };
 }
 

@@ -44,10 +44,11 @@ export default async function handler(req, res) {
     let parsed = await requestAI(messages, { isRetry });
     const aiMs = Date.now() - t0;
 
-    let canon = checkCanonicalViolations(parsed?.narrative, {
+    const canonCtx = {
       year: compactState?.profile?.year,
       week: compactState?.time?.week,
-    });
+    };
+    let canon = checkCanonicalViolations(parsed?.narrative, canonCtx, parsed?.options);
     if (!canon.ok) {
       messages = [
         ...messages,
@@ -57,10 +58,7 @@ export default async function handler(req, res) {
       const t1 = Date.now();
       parsed = await requestAI(messages, { isRetry: true });
       console.warn(`chat canonical retry: +${Date.now() - t1}ms (${canon.id})`);
-      canon = checkCanonicalViolations(parsed?.narrative, {
-        year: compactState?.profile?.year,
-        week: compactState?.time?.week,
-      });
+      canon = checkCanonicalViolations(parsed?.narrative, canonCtx, parsed?.options);
       if (!canon.ok) {
         console.warn('canonical guard still failing:', canon.id, canon.reason);
       }

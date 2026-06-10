@@ -23,6 +23,7 @@ import {
 import { applySceneVisual } from './scene-visuals.js';
 import { inferMagicGains, applyInferredMagicGains } from './magic-inference.js';
 import { processAfterTurn } from './progression.js';
+import { applyTimeAfterTurn } from './time-system.js';
 import { sanitizeStateUpdate } from '../lib/validateStateUpdate.js';
 import {
   getGameState,
@@ -160,13 +161,22 @@ function applyResponseInner(data, actionLabel) {
 
   const stateBefore = structuredClone(gameState);
   const magicBefore = gameState?.magic ? structuredClone(gameState.magic) : null;
+  let aiTimeUpdate = null;
 
   if (data.stateUpdate) {
     const sanitized = sanitizeStateUpdate(data.stateUpdate);
     if (sanitized.currentTarget !== undefined) delete sanitized.currentTarget;
     const clamped = clampRelationships(sanitized, gameState);
+    aiTimeUpdate = clamped.time;
     gameState = mergeStateUpdate(gameState, clamped);
   }
+
+  gameState.time = applyTimeAfterTurn(
+    gameState.time,
+    aiTimeUpdate,
+    gameState,
+    { actionLabel, narrative: data.narrative || '' }
+  );
 
   if (data.ending) {
     gameState.flags.ending = data.ending;

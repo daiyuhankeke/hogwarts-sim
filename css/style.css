@@ -1231,6 +1231,12 @@ textarea {
   opacity: 0.55;
 }
 
+.tt-today-row.tt-now {
+  background: rgba(212, 163, 37, 0.12);
+  border-radius: 3px;
+  font-weight: 600;
+}
+
 .tt-today-row.tt-evening {
   font-style: italic;
   opacity: 0.85;

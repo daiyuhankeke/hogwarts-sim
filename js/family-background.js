@@ -5,12 +5,111 @@
 /** @typedef {'极端鄙视麻瓜'|'传统纯血主义'|'中立保守'|'改良派'|'亲麻瓜'} FamilyMuggleAttitude */
 
 export const PLAYER_MUGGLE_ATTITUDES = [
-  { value: 'inherit', label: '继承家族/家庭观念' },
+  { value: 'inherit', label: '与家族相同（血统观念）' },
   { value: 'more_extreme', label: '比家族更极端（纯血优越）' },
   { value: 'more_open', label: '比家族更开明（尊重麻瓜）' },
   { value: 'neutral', label: '个人中立，不太关心血统' },
   { value: 'muggle_culture', label: '欣赏麻瓜文化与科技' },
+  { value: 'against_voldemort', label: '反对伏地魔（或与家族黑暗立场决裂）' },
 ];
+
+/** 与食死徒/黑魔法界关联较深的家族 id */
+export const DARK_TIED_FAMILY_IDS = new Set([
+  'avery', 'lestrange', 'rowle', 'yaxley', 'rosier', 'selwyn', 'travers',
+  'malfoy', 'black', 'crabbe', 'nott', 'flint', 'gaunt',
+]);
+
+export function isDarkTiedFamily(family) {
+  return DARK_TIED_FAMILY_IDS.has(family?.familyId);
+}
+
+export function resolveEffectiveBloodAttitude(family) {
+  if (!family || family.bloodStatus === '麻瓜出身') return null;
+  const v = family.playerMuggleAttitude;
+  if (v === 'inherit' || v === 'against_voldemort') return family.familyMuggleAttitude;
+  if (v === 'more_extreme') return '极端鄙视麻瓜';
+  if (v === 'more_open') return '改良派';
+  if (v === 'neutral') return '中立保守';
+  if (v === 'muggle_culture') return '亲麻瓜';
+  return family.familyMuggleAttitude;
+}
+
+/** 侧栏与 prompt 用的完整展示文案 */
+export function formatPlayerAttitudeDisplay(family) {
+  if (!family || family.bloodStatus === '麻瓜出身') return null;
+  const v = family.playerMuggleAttitude;
+  if (v === 'inherit' && family.familyMuggleAttitude) {
+    return `与家族相同（${family.familyMuggleAttitude}）`;
+  }
+  if (v === 'against_voldemort') {
+    const blood = family.familyMuggleAttitude ? `血统 ${family.familyMuggleAttitude} · ` : '';
+    return `${blood}反对伏地魔`;
+  }
+  return resolvePlayerMuggleAttitudeLabel(v, family.bloodStatus);
+}
+
+export function enrichFamilyMetadata(family) {
+  if (!family || family.bloodStatus === '麻瓜出身') return family;
+  family.hasDarkTies = isDarkTiedFamily(family);
+  family.resolvedPlayerMuggleAttitude = resolveEffectiveBloodAttitude(family);
+  family.playerMuggleAttitudeDisplay = formatPlayerAttitudeDisplay(family);
+  if (family.playerMuggleAttitudeDisplay) {
+    family.playerMuggleAttitudeLabel = family.playerMuggleAttitudeDisplay;
+  }
+  return family;
+}
+
+/** 供 AI：血统观念 vs 黑魔王政治立场 */
+export function getFamilyPoliticalContext(state) {
+  const family = state?.profile?.family;
+  if (!family || family.bloodStatus === '麻瓜出身') {
+    return { hasDarkTies: false, rules: [], dmHint: '' };
+  }
+
+  const year = state?.profile?.year ?? 1;
+  const attitude = family.playerMuggleAttitude;
+  const dark = family.hasDarkTies ?? isDarkTiedFamily(family);
+  const rules = [
+    '「对麻瓜/血统态度」与「是否效忠伏地魔」是两层设定；勿混为一谈。',
+  ];
+
+  if (attitude === 'against_voldemort') {
+    rules.push(
+      '玩家明确反对伏地魔/可能与家族黑暗立场决裂；参与 D.A.、抵抗卡罗等符合设定。',
+      dark
+        ? `须偶尔提及${family.familyLabel}家族施压、监视或断绝往来，勿写成家人也支持抵抗。`
+        : '按 family.summary 展开家庭线即可。',
+    );
+  } else if (dark && (attitude === 'inherit' || attitude === 'more_extreme')) {
+    rules.push(
+      `玩家血统观念与${family.familyLabel}家族一致（${family.familyMuggleAttitude}）；家族与黑魔法界关系密切。`,
+    );
+    if (year >= 6) {
+      rules.push(
+        '若参与抵抗食死徒/邓布利多军：须写秘密行动、内心撕裂、假意配合或已与家族决裂等动机；',
+        '禁止写成家族不知情、毫无风险地公开练习守护神、与卢娜等人轻松搞抵抗。',
+      );
+    }
+    if (attitude === 'inherit') {
+      rules.push(`叙事须体现对麻瓜/麻瓜出身的${family.familyMuggleAttitude}态度，勿写成天然亲麻瓜。`);
+    }
+  } else if (dark && ['more_open', 'neutral', 'muggle_culture'].includes(attitude)) {
+    rules.push(
+      `玩家血统观念较${family.familyLabel}家族开明；抵抗伏地魔符合个人立场，但家族可能来信施压或表示失望。`,
+    );
+  } else if (attitude === 'inherit' && family.familyMuggleAttitude) {
+    rules.push(`玩家对麻瓜/麻瓜出身：与家族相同（${family.familyMuggleAttitude}）。`);
+  }
+
+  return {
+    hasDarkTies: dark,
+    playerAttitude: attitude,
+    resolvedBloodAttitude: family.resolvedPlayerMuggleAttitude || resolveEffectiveBloodAttitude(family),
+    displayLabel: family.playerMuggleAttitudeDisplay || formatPlayerAttitudeDisplay(family),
+    rules,
+    dmHint: rules.join(' '),
+  };
+}
 
 /** 神圣二十八家族（含原著麻瓜态度） */
 export const SACRED_28_FAMILIES = [
@@ -433,7 +532,7 @@ export function buildFamilyBackground(input) {
       + `母：${family.mother.name}（${family.mother.bloodStatus}，${family.mother.occupation}）。`;
   }
 
-  return family;
+  return enrichFamilyMetadata(family);
 }
 
 export function normalizeFamily(raw, profileBasics = {}) {
@@ -463,7 +562,7 @@ export function normalizeFamily(raw, profileBasics = {}) {
   if (raw.estrangementNote) merged.estrangementNote = raw.estrangementNote;
   if (raw.estrangedFromFamily !== undefined) merged.estrangedFromFamily = raw.estrangedFromFamily;
   if (raw.familyStanding) merged.familyStanding = raw.familyStanding;
-  return merged;
+  return enrichFamilyMetadata(merged);
 }
 
 export function formatFamilyForPrompt(family) {
@@ -476,7 +575,13 @@ export function formatFamilyForPrompt(family) {
     text += `母亲：${family.mother.name}，${family.mother.appearance}，性格${family.mother.personality}，${family.mother.occupation}（${family.mother.bloodStatus}）\n`;
   }
   if (family.familyMuggleAttitude && family.bloodStatus !== '麻瓜出身') {
-    text += `家族对麻瓜/麻瓜出身态度：${family.familyMuggleAttitude}；玩家个人：${family.playerMuggleAttitudeLabel || family.playerMuggleAttitude}\n`;
+    const display = family.playerMuggleAttitudeDisplay || family.playerMuggleAttitudeLabel || family.playerMuggleAttitude;
+    text += `家族对麻瓜/麻瓜出身态度：${family.familyMuggleAttitude}；玩家个人：${display}\n`;
+  }
+  if (family.hasDarkTies && family.playerMuggleAttitude === 'against_voldemort') {
+    text += '玩家政治立场：反对伏地魔，可能与家族黑暗传统对立。\n';
+  } else if (family.hasDarkTies && family.playerMuggleAttitude === 'inherit') {
+    text += `【叙事约束】${family.familyLabel}与黑魔法界关系密切；玩家血统观与家族相同。若写抵抗食死徒须有机密/决裂/内心冲突，勿写成无代价的正义主角。\n`;
   }
   if (family.estrangedFromFamily && family.estrangementNote) {
     text += `家族除名：${family.estrangementNote}\n`;

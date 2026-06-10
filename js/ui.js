@@ -3,6 +3,7 @@ import { formatWandSummary } from './wand-system.js';
 import { ACHIEVEMENTS, getClubNames, getGossipLabel, getPlaythroughHook } from './progression.js';
 import { getCanonicalPlotContext } from './canonical-storyline.js';
 import { WEEKDAYS, PERIOD_LABELS, getTodayClasses, getTodayEveningClasses, SUBJECT_CATALOG } from './timetable.js';
+import { formatTimeInStatus, getDayPhase, isDuringClass, migrateTime } from './time-system.js';
 import { getAttitudeClass, getToneLabel, migrateFamilyTrack, getSuggestedFamilyBeats } from './family-interactions.js';
 
 const HOUSE_COLORS = {
@@ -29,9 +30,11 @@ function stripLegacyStatusFields(line) {
 }
 
 function buildStatusLine(state) {
+  const time = migrateTime(state);
   const magicRank = state.magic?.rank || '—';
+  const timeLabel = formatTimeInStatus(state);
   return (
-    `第${state.time.week}周 ${state.time.weekday} | 霍格沃茨 | ${state.scene.weather} | ` +
+    `第${time.week}周 ${time.weekday} ${timeLabel} | 霍格沃茨 | ${state.scene.weather} | ` +
     `场景：${state.scene.location} | 魔法：${magicRank}`
   );
 }
@@ -337,8 +340,8 @@ export function renderFamilyPanel(state) {
   const attitudeHtml = family.familyMuggleAttitude && family.familyMuggleAttitude !== '不适用（麻瓜家庭）'
     ? `<span class="family-badge ${getAttitudeClass(family.familyMuggleAttitude)}">家族 ${escapeHtml(family.familyMuggleAttitude)}</span>`
     : '';
-  const playerAttHtml = family.playerMuggleAttitudeLabel
-    ? `<span class="family-badge family-badge-player">个人 ${escapeHtml(family.playerMuggleAttitudeLabel)}</span>`
+  const playerAttHtml = (family.playerMuggleAttitudeDisplay || family.playerMuggleAttitudeLabel)
+    ? `<span class="family-badge family-badge-player">个人 ${escapeHtml(family.playerMuggleAttitudeDisplay || family.playerMuggleAttitudeLabel)}</span>`
     : '';
 
   const estrangedHtml = family.estrangedFromFamily
@@ -398,27 +401,30 @@ export function renderTimetablePanel(state) {
   if (!el || !state?.timetable) return;
 
   const tt = state.timetable;
-  const today = state.time?.weekday ?? '周一';
+  const time = migrateTime(state);
+  const today = time.weekday ?? '周一';
   const todayClasses = getTodayClasses(state);
   const evening = getTodayEveningClasses(state);
+  const phase = getDayPhase(time.clock);
 
   let todayHtml = '';
   if (today === '周六' || today === '周日') {
-    todayHtml = `<p class="hint">${today} · 无固定课时${today === '周六' && state.profile?.year >= 3 ? '（三年级以上可去霍格莫德）' : ''}</p>`;
+    todayHtml = `<p class="hint">${today} · ${escapeHtml(time.clock)} · ${escapeHtml(phase)}${today === '周六' && state.profile?.year >= 3 ? '（三年级以上可去霍格莫德）' : ''}</p>`;
   } else if (todayClasses.length) {
     todayHtml = todayClasses.map((c) => {
-      const isNow = c.subjectId !== 'free' && c.subjectId !== 'study';
-      return `<div class="tt-today-row${isNow ? '' : ' tt-muted'}">` +
+      const isNow = c.subjectId !== 'free' && c.subjectId !== 'study' && isDuringClass(time.clock, c.time);
+      return `<div class="tt-today-row${isNow ? ' tt-now' : c.subjectId === 'free' || c.subjectId === 'study' ? ' tt-muted' : ''}">` +
         `<span class="tt-time">${escapeHtml(c.time)}</span>` +
-        `<span class="tt-subject">${escapeHtml(c.name)}</span>` +
+        `<span class="tt-subject">${escapeHtml(c.name)}${isNow ? ' ◀' : ''}</span>` +
         `<span class="tt-teacher">${escapeHtml(c.teacher)}</span></div>`;
     }).join('');
     if (evening.length) {
-      todayHtml += evening.map((c) =>
-        `<div class="tt-today-row tt-evening"><span class="tt-time">${escapeHtml(c.time)}</span>` +
-        `<span class="tt-subject">${escapeHtml(c.name)}</span>` +
-        `<span class="tt-teacher">${escapeHtml(c.teacher)}</span></div>`
-      ).join('');
+      todayHtml += evening.map((c) => {
+        const isNow = isDuringClass(time.clock, c.time);
+        return `<div class="tt-today-row tt-evening${isNow ? ' tt-now' : ''}"><span class="tt-time">${escapeHtml(c.time)}</span>` +
+          `<span class="tt-subject">${escapeHtml(c.name)}${isNow ? ' ◀' : ''}</span>` +
+          `<span class="tt-teacher">${escapeHtml(c.teacher)}</span></div>`;
+      }).join('');
     }
   }
 
@@ -447,7 +453,7 @@ export function renderTimetablePanel(state) {
     : tt.notes ? `<p class="hint tt-note">${escapeHtml(tt.notes)}</p>` : '';
 
   el.innerHTML =
-    `<details class="magic-details" open><summary>今日 · ${escapeHtml(today)}</summary>` +
+    `<details class="magic-details" open><summary>今日 · ${escapeHtml(today)} · ${escapeHtml(time.clock)}</summary>` +
     `<div class="tt-today">${todayHtml || '<p class="hint">无课</p>'}</div></details>` +
     `<details class="magic-details"><summary>本周课表</summary>` +
     gridHead + gridRows + `</div>${electiveNote}</details>`;

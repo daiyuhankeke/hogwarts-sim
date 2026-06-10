@@ -9,6 +9,8 @@ import { createFallbackWand } from './wand-system.js';
 import { createInitialProgression, migrateProgression, mergeProgressionUpdate, processAfterTurn } from './progression.js';
 import { createTimetable, migrateTimetable, mergeTimetableUpdate } from './timetable.js';
 import { migrateCanonPlot, mergeCanonPlotUpdate } from './canonical-storyline.js';
+import { migrateTime } from './time-system.js';
+import { enrichFamilyMetadata } from './family-background.js';
 
 const STORAGE_KEY = 'hogwarts-sim-save';
 const SLOT_PREFIX = 'hogwarts-sim-slot-';
@@ -79,6 +81,7 @@ export function normalizeLoadedState(state) {
   state.magic = migrateMagic(state);
   state.progression = migrateProgression(state);
   state.timetable = migrateTimetable(state);
+  state.time = migrateTime(state);
   if (!state.flags) state.flags = {};
   state.flags.canonPlot = migrateCanonPlot(state);
   if (!state.profile.wand && state.profile.name) {
@@ -86,6 +89,9 @@ export function normalizeLoadedState(state) {
   }
   if (state.profile && !state.profile.family?.summary) {
     state.profile = normalizeProfile(state.profile);
+  }
+  if (state.profile?.family) {
+    state.profile.family = enrichFamilyMetadata(state.profile.family);
   }
   delete state.career;
   if (state.flags?.graduated !== undefined) delete state.flags.graduated;
@@ -107,7 +113,12 @@ export function createInitialState(rawProfile) {
 
   return {
     profile,
-    time: { week: 1, weekday: year === 1 ? '周日' : '周一', season: '秋' },
+    time: {
+      week: 1,
+      weekday: year === 1 ? '周日' : '周一',
+      season: '秋',
+      clock: year === 1 ? '10:30' : '07:45',
+    },
     scene: { location: year === 1 ? '国王十字车站' : '霍格沃茨城堡', weather: '阴' },
     player: {},
     currentTarget: null,
@@ -142,7 +153,7 @@ export function mergeStateUpdate(state, update) {
 
   const next = structuredClone(state);
 
-  if (update.time) next.time = { ...next.time, ...update.time };
+  if (update.time) next.time = migrateTime({ ...next, time: { ...next.time, ...update.time } });
   if (update.scene) next.scene = { ...next.scene, ...update.scene };
   if (update.summary) next.summary = update.summary;
 

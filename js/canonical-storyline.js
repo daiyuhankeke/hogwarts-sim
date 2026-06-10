@@ -92,10 +92,10 @@ export const CANON_PLOT_BY_YEAR = {
   7: {
     title: '哈利·波特与死亡圣器（霍格沃茨篇）',
     beats: [
-      { id: 'carrows_reign', week: 1, label: '卡罗兄妹掌权', summary: '食死徒控制学校；黑魔法防御教钻心咒。**哈利、罗恩、赫敏不在校**（在外狩猎魂器）；校内由纳威、金妮、卢娜等维持 D.A. 抵抗。', mandatory: true },
-      { id: 'underground_resistance', week: 6, label: '地下抵抗', summary: 'D.A. 重组；有求必应屋；纳威领导。**禁止把哈利/罗恩/赫敏写在大礼堂、课堂、图书馆等校内日常场景**；仅可提及校外消息或《唱唱反调》传闻。', mandatory: false },
-      { id: 'taboo_hunt', week: 12, label: '魂器 hunt 背景', summary: '校外哈利寻魂器；校内玩家听闻零星消息；斯内普校长。', mandatory: false },
-      { id: 'harry_returns', week: 28, label: '哈利回校', summary: '哈利、罗恩、赫敏潜入；拉文克劳冠冕线索；失踪柜。', mandatory: true },
+      { id: 'carrows_reign', week: 1, label: '卡罗兄妹掌权', summary: '食死徒控制学校；黑魔法防御改教钻心咒。哈利、罗恩、赫敏不在校，去向成谜；校内由纳威、金妮、卢娜等维持 D.A. 抵抗。', dmSummary: '（DM）三人实际在外秘密狩猎魂器——此任务对霍格沃茨师生绝对保密，叙事中不可泄露。', mandatory: true },
+      { id: 'underground_resistance', week: 6, label: '地下抵抗', summary: 'D.A. 重组；有求必应屋；纳威领导。禁止把哈利/罗恩/赫敏写在校内日常场景；提及三人仅限模糊传闻。', dmSummary: '（DM）同上，魂器任务保密；Resistance 焦点在校内，勿写 NPC 知晓哈利任务细节。', mandatory: false },
+      { id: 'taboo_hunt', week: 12, label: '校外动向成谜', summary: '校内或仅有流言：三人仍在逃亡、被通缉、偶有密信称平安；斯内普任校长。玩家与同学**不知**他们在做什么。', dmSummary: '（DM）背景为魂器 hunt，但叙事禁止出现「魂器」及任务细节；不可写金妮/卢娜/纳威向玩家透露哈利在找某物或推测任务内容。', mandatory: false },
+      { id: 'harry_returns', week: 28, label: '哈利回校', summary: '哈利、罗恩、赫敏潜入；寻找拉文克劳失踪的冠冕；有求必应屋与大战逼近。', dmSummary: '（DM）可写冠冕线索；「魂器」一词仍仅限哈利三人组内部，勿让其他同学对玩家点破。', mandatory: true },
       { id: 'battle_hogwarts', week: 32, label: '霍格沃茨大战', summary: '食死徒围攻；疏散；斯内普之死与记忆；哈利赴禁林；伏地魔终亡。', mandatory: true },
       { id: 'year_end', week: 34, label: '战后重建', summary: '伤亡清点；纪念；N.E.W.T. 取消或简化；新学年希望。', mandatory: true },
     ],
@@ -170,6 +170,14 @@ export function migrateCanonPlot(state) {
   const plot = createInitialCanonPlot(year);
   if (year > 1) markPreviousYearMandatoryCompleted(plot, year);
   return plot;
+}
+
+function beatDmText(beat) {
+  return beat.dmSummary || beat.summary;
+}
+
+function beatForUi(beat) {
+  return { id: beat.id, label: beat.label, summary: beat.summary, overdue: beat.overdue };
 }
 
 function isBeatCompleted(completed, year, beatId) {
@@ -266,9 +274,10 @@ export function getCanonicalPlotContext(state) {
       dmRules.push('第28周起哈利、罗恩、赫敏已潜入霍格沃茨，可写短暂同场直至大战；此前学年三人不在校。');
     } else {
       dmRules.push(
-        '【七年级硬性规则】哈利·波特、罗恩·韦斯莱、赫敏·格兰杰整学年在外逃亡狩猎魂器，不在霍格沃茨上课、用餐、图书馆或日常社交。',
-        '禁止把三人写在大礼堂/课堂/公共休息室与玩家同桌、早餐、讨论抵抗计划；校内抵抗由纳威·隆巴顿、金妮·韦斯莱、卢娜·洛夫古德等带领。',
-        '若需提及三人，仅限校外消息、预言家日报、《唱唱反调》传闻或玩家回忆，不可实体出场。',
+        '【七年级硬性规则】哈利·波特、罗恩·韦斯莱、赫敏·格兰杰不在霍格沃茨上课、用餐、图书馆或日常社交；实际在外执行秘密任务（详见 dmSummary，对校内保密）。',
+        '【魂器保密·第1–27周】霍格沃茨内师生（含金妮、卢娜、纳威、玩家）**不得知晓魂器或哈利任务细节**；禁止 NPC 说「哈利在找魂器/某物/重要东西」或让玩家推测任务内容。仅可：失踪、通缉、逃亡、不知去向、偶有密信称平安、邓布利多留给他们一件事（不知是什么）。',
+        '禁止把三人写在大礼堂/课堂/公共休息室与玩家同桌；校内抵抗由纳威、金妮、卢娜等带领。',
+        '若需提及三人，仅限上述模糊传闻或《唱唱反调》影射，不可实体出场。',
       );
     }
   }
@@ -280,8 +289,8 @@ export function getCanonicalPlotContext(state) {
     year,
     title: yearPlot.title,
     week,
-    dueBeat: due ? { id: due.id, label: due.label, summary: due.summary, overdue: due.overdue } : null,
-    nextMandatory: nextMandatory ? { id: nextMandatory.id, label: nextMandatory.label, summary: nextMandatory.summary } : null,
+    dueBeat: due ? beatForUi(due) : null,
+    nextMandatory: nextMandatory ? beatForUi(nextMandatory) : null,
     upcomingBeats: upcoming.map((b) => ({ week: b.week, label: b.label })),
     completedCount: (plot.completed || []).filter((k) => String(k).startsWith(`${year}:`) || !String(k).includes(':')).length,
     totalBeats: yearPlot.beats.length,
@@ -291,9 +300,9 @@ export function getCanonicalPlotContext(state) {
     harryReturnsWeek: year === 7 ? harryReturnsWeek : null,
     dmRules: dmRules.join(' '),
     dmHint: due
-      ? `【本阶段主线】第${week}周应推进「${due.label}」：${due.summary}`
+      ? `【本阶段主线】第${week}周应推进「${due.label}」：${beatDmText(due)}`
       : nextMandatory
-        ? `下一必经主线（第${nextMandatory.week}周）：${nextMandatory.label} — ${nextMandatory.summary}`
+        ? `下一必经主线（第${nextMandatory.week}周）：${nextMandatory.label} — ${beatDmText(nextMandatory)}`
         : `${yearPlot.title} 本学年主线已推进完毕，可聚焦日常与感情线。`,
   };
 }
