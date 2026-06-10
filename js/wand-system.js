@@ -40,10 +40,11 @@ export function createFallbackWand(profile) {
     length,
     flexibility,
     affinity: `${wood}与${core.name}的组合，适合意志坚定的小女巫。`,
-    appearance: `杖身由${wood}制成，长约${length}，触感${flexibility}。杖身呈深木色调，杖柄处可见自然木纹，杖尖收敛细长。`,
+    appearance: profile.house
+      ? `杖身由${wood}制成，长约${length}，触感${flexibility}。杖身呈深木色调，杖柄处可见自然木纹，杖尖收敛细长。整体风格与${profile.house}的气质隐约相合。`
+      : `杖身由${wood}制成，长约${length}，触感${flexibility}。杖身呈深木色调，杖柄处可见自然木纹，杖尖收敛细长。`,
     color,
     generatedBy: 'fallback',
-    imageUrl: null,
   };
 }
 

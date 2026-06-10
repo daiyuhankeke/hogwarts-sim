@@ -105,9 +105,14 @@
             </div>
             <pre id="family-preview" class="family-preview" hidden></pre>
           </div>
-          <label class="full-width">外貌特征
-            <input name="appearance" value="深棕卷发，琥珀色眼睛，气质安静" placeholder="例：深棕卷发，琥珀色眼睛，左手腕有小疤" maxlength="80">
-          </label>
+          <div class="full-width appearance-section">
+            <span class="field-label">外貌特征</span>
+            <div class="appearance-row">
+              <textarea name="appearance" id="player-appearance" rows="2" placeholder="点击下方随机生成，或自行填写" maxlength="120"></textarea>
+              <button type="button" id="appearance-random-btn" class="btn btn-secondary btn-small">随机外貌</button>
+            </div>
+            <p class="hint">首次进入会自动生成；可多次随机直到满意，也可手动修改。</p>
+          </div>
           <div class="full-width talent-section">
             <span class="field-label">特殊才能（可多选，也可自拟）</span>
             <div id="talent-presets" class="talent-grid"></div>
@@ -118,23 +123,17 @@
             <p id="talent-summary" class="hint">已选：无</p>
           </div>
           <label class="full-width">自定义补充（可选）
-            <textarea name="custom" placeholder="其他你想让 DM 知道的信息"></textarea>
+            <textarea name="custom" placeholder="..."></textarea>
           </label>
           <div class="full-width wand-section">
             <span class="field-label">魔杖（奥利凡德）*</span>
-            <p class="hint">每位女巫都需要一根属于自己的魔杖。可让奥利凡德用 AI 挑选，并可选生成外观图。</p>
+            <p class="hint">每位女巫都需要一根属于自己的魔杖。</p>
             <div id="wand-preview"><p class="hint">点击「前往奥利凡德」挑选魔杖</p></div>
             <div class="wand-actions">
               <button type="button" id="wand-generate-btn" class="btn btn-secondary btn-small">前往奥利凡德（AI 选杖）</button>
-              <button type="button" id="wand-generate-image-btn" class="btn btn-secondary btn-small">选杖 + 生成外观图</button>
               <button type="button" id="wand-fallback-btn" class="btn btn-secondary btn-small">快速生成（离线）</button>
             </div>
             <p id="wand-status" class="hint"></p>
-          </div>
-          <div class="full-width talent-section">
-            <span class="field-label">社团（最多 3 个，可多选）</span>
-            <div id="club-presets" class="talent-grid"></div>
-            <p class="hint">社团活动会提升对应魔法能力，并在剧情中定期出现</p>
           </div>
           <label>首要想攻略谁
             <select name="target" id="target-select">

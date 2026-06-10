@@ -17,9 +17,19 @@
 - 更新：`progression.gossip: { "level": 2, "rumors": ["有人说你在和级长约会"] }`
 - 流言应影响 NPC 反应但**不可 BE**
 
-## 社团（profile.clubs / progression.clubs）
-- 玩家可选最多 3 个社团；叙事中每 3-5 回合应出现至少一次社团相关选项或事件
-- D.A.→黑魔法防御；魁地奇→飞行与社交；决斗俱乐部→咒语；图书馆组→学业
+## 社团（progression.clubs）
+- **创建角色时不预选社团**；开局 `progression.clubs` 为空
+- 玩家最多同时加入 **3 个**社团；须在剧情中通过报名/选拔/邀请加入
+- 加入时更新：`progression.clubsJoined: ["quidditch"]`（可一次多个 id，勿超过上限）
+- 参考 `eventContext.clubAvailability`：
+  - **D.A.**（`da`）：**五年级起**才可加入（乌姆里奇掌权、哈利与赫敏组建之后）
+  - **魁地奇校队**（`quidditch`）：每年开学前后选拔，赛季中有训练与比赛
+  - **决斗俱乐部**（`dueling`）：二年级洛哈特曾办；之后可有自发练习小组
+  - **斯拉格霍恩俱乐部**（`slug`）：**六年级**斯拉格霍恩返校后
+  - **图书馆研究组 / 神奇生物兴趣组 / 戈布石 / 魔咒创新社**：见 `canJoin` 列表，须符合 minYear
+- 未到年级或原著事件未发生时，**不可**提前让玩家加入（见 `notYetAvailable`）
+- 已加入社团后，每 3-5 回合应出现至少一次相关选项或活动；未加入时可在合适时机提供**报名/选拔**选项
+- 社团 id：`da` | `quidditch` | `dueling` | `slug` | `library` | `creature` | `gobstones` | `charms`
 
 ## 大事件准备期（eventContext.eventPrep）
 - 霍格莫德 / 圣诞舞会 / 三强赛 / O.W.L. 考前 2-4 周进入准备期
@@ -28,7 +38,7 @@
 
 ## O.W.L. 考试周（五年级第 30-34 周）
 - `progression.exams.active: true` 时叙事聚焦考试压力
-- 复习提升 magic.subjects；熬夜降低 player.mood、升高 exams.stress
+- 复习提升 magic.subjects；熬夜升高 exams.stress
 - 考后写入 `magic.owls.results`，允许 1-2 科发挥失常
 
 ## 守护神仪式（progression.patronusCeremony）
@@ -53,6 +63,7 @@
 ```json
 "progression": {
   "housePoints": 5,
+  "clubsJoined": ["quidditch"],
   "memoriesAdded": [{ "title": "第一次变形", "text": "餐巾纸只变成纸团，但佩内洛耐心指导", "target": null }],
   "gossip": { "rumors": ["拉文克劳有人在议论你和某格兰芬多"] },
   "patronusProgress": 8,

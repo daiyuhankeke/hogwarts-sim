@@ -18,7 +18,6 @@
         "custom": { "type": "string" },
         "target": { "type": "string" },
         "tone": { "enum": ["偏甜", "偏日常", "偏小虐"] },
-        "clubs": { "type": "array", "items": { "type": "string" } },
         "saveCedric": { "type": "boolean" },
         "wand": {
           "type": "object",
@@ -91,9 +90,7 @@
     },
     "player": {
       "type": "object",
-      "properties": {
-        "mood": { "type": "integer", "minimum": 0, "maximum": 100 }
-      }
+      "properties": {}
     },
     "magic": {
       "type": "object",
@@ -272,20 +269,7 @@
         "familyTrack": {
           "type": "object",
           "properties": {
-            "recentEvents": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "week": { "type": "integer" },
-                  "type": { "type": "string" },
-                  "title": { "type": "string" },
-                  "text": { "type": "string" }
-                }
-              }
-            },
             "lastBeatWeek": { "type": "integer" },
-            "lettersReceived": { "type": "integer" },
             "npcTies": { "type": "array" }
           }
         }

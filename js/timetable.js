@@ -68,16 +68,15 @@ export function pickElectives(profile) {
   if (year < 3) return [];
 
   const talents = profile.talents ?? [];
-  const clubs = profile.clubs ?? [];
   const chosen = [];
 
-  if (clubs.includes('creature') || talents.includes('神奇生物亲和')) {
+  if (talents.includes('神奇生物亲和')) {
     chosen.push('care');
   }
   if (talents.includes('占卜直觉')) {
     chosen.push('divination');
   }
-  if (clubs.includes('library') || talents.includes('古代魔文学霸')) {
+  if (talents.includes('古代魔文学霸')) {
     if (!chosen.includes('arithmancy')) chosen.push('arithmancy');
     if (!chosen.includes('runes') && chosen.length < 2) chosen.push('runes');
   }

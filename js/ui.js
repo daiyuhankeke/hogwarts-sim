@@ -1,5 +1,5 @@
 import { getSpellById, getMasteryLabel, MAGIC_SUBJECTS, OWL_EXAM_SUBJECTS, OWL_GRADE_NAMES } from './magic-system.js';
-import { renderWandSvg, formatWandSummary } from './wand-system.js';
+import { formatWandSummary } from './wand-system.js';
 import { ACHIEVEMENTS, getClubNames, getGossipLabel, getPlaythroughHook } from './progression.js';
 import { getCanonicalPlotContext } from './canonical-storyline.js';
 import { WEEKDAYS, PERIOD_LABELS, getTodayClasses, getTodayEveningClasses, SUBJECT_CATALOG } from './timetable.js';
@@ -26,19 +26,24 @@ export function applyHouseTheme(house) {
   document.documentElement.style.setProperty('--house-accent', colors.accent);
 }
 
+function stripMoodFromStatusLine(line) {
+  return line.replace(/\s*\|\s*心情[：:][^|]*/g, '').trim();
+}
+
 function stripRomanceFields(line) {
-  return line
-    .replace(/\s*\|\s*当前男主[：:][^|]*/g, '')
-    .replace(/\s*\|\s*关系[：:][^|]*/g, '')
-    .replace(/\s*\|\s*好感[：:][^|]*/g, '')
-    .replace(/\s*\|\s*(?=\|)/g, '')
-    .trim();
+  return stripMoodFromStatusLine(
+    line
+      .replace(/\s*\|\s*当前男主[：:][^|]*/g, '')
+      .replace(/\s*\|\s*关系[：:][^|]*/g, '')
+      .replace(/\s*\|\s*好感[：:][^|]*/g, '')
+      .replace(/\s*\|\s*(?=\|)/g, '')
+      .trim()
+  );
 }
 
 function buildStatusLine(state) {
   const target = state.currentTarget || '无';
   const showRomance = target !== '无';
-  const mood = state.player.mood;
   const magicRank = state.magic?.rank || '—';
 
   let line =
@@ -52,7 +57,7 @@ function buildStatusLine(state) {
     line += ` | 当前男主：${target} | 关系：${stage} | 好感：${affection}`;
   }
 
-  line += ` | 心情：${mood} | 魔法：${magicRank}`;
+  line += ` | 魔法：${magicRank}`;
   return line;
 }
 
@@ -64,7 +69,8 @@ export function renderStatusBar(state, statusLine) {
   const showRomance = target !== '无';
 
   if (statusLine) {
-    el.textContent = showRomance ? statusLine : stripRomanceFields(statusLine);
+    const line = showRomance ? statusLine : stripRomanceFields(statusLine);
+    el.textContent = stripMoodFromStatusLine(line);
     return;
   }
 
@@ -189,8 +195,7 @@ export function renderMagicPanel(state) {
   const wand = state.profile?.wand;
   const wandHtml = wand
     ? `<details class="magic-details" open><summary>魔杖</summary>
-        <div class="wand-card">
-          ${wand.imageUrl ? `<img class="wand-image" src="${escapeHtml(wand.imageUrl)}" alt="魔杖">` : renderWandSvg(wand)}
+        <div class="wand-card wand-card-text">
           <div class="wand-info">
             <div class="wand-title">${escapeHtml(formatWandSummary(wand))}</div>
             <div class="wand-flex">${escapeHtml(wand.flexibility)}</div>
@@ -342,7 +347,9 @@ export function renderProgressPanel(state) {
     (p.housePenalties ? ` · 警告 ${p.housePenalties}` : '') +
     ` · 流言：${escapeHtml(gossip)}</div>` +
     examHtml + patronusHtml + prepHtml +
-    (clubs.length ? `<p class="prog-clubs">社团：${escapeHtml(clubs.join('、'))}</p>` : '') +
+    (clubs.length
+      ? `<p class="prog-clubs">社团：${escapeHtml(clubs.join('、'))}</p>`
+      : `<p class="prog-clubs hint">社团：尚未加入（可在剧情中报名）</p>`) +
     (p.wandNotes ? `<p class="wand-affinity-hint" title="魔杖相性">🪄 ${escapeHtml(p.wandNotes.slice(0, 60))}${p.wandNotes.length > 60 ? '…' : ''}</p>` : '') +
     rumors +
     `<details class="magic-details"><summary>回忆 (${(p.memories || []).length})</summary>${memHtml}</details>` +
@@ -530,14 +537,6 @@ export function renderFamilyPanel(state) {
       ).join('')
     : '<p class="hint">暂无关联 NPC</p>';
 
-  const eventsHtml = (track.recentEvents || []).length
-    ? track.recentEvents.slice(0, 4).map((e) =>
-        `<div class="family-event"><span class="family-event-week">W${e.week}</span>` +
-        `<span class="family-event-title">${escapeHtml(e.title)}</span>` +
-        `<span class="family-event-text">${escapeHtml(e.text)}</span></div>`
-      ).join('')
-    : '<p class="hint">尚无家庭线剧情记录</p>';
-
   const beatHtml = beats.length
     ? beats.map((b) =>
         `<li class="family-beat family-beat-${b.priority}">${escapeHtml(b.label)}` +
@@ -557,7 +556,6 @@ export function renderFamilyPanel(state) {
     `<details class="magic-details" open><summary>父母</summary>${parentHtml || '<p class="hint">未设定</p>'}</details>` +
     `<details class="magic-details"><summary>原著关联</summary>${connHtml}</details>` +
     `<details class="magic-details" open><summary>家族 NPC（${(track.npcTies || []).length}）</summary><div class="family-npc-list">${npcHtml}</div></details>` +
-    `<details class="magic-details"><summary>近期家庭线（${track.lettersReceived || 0} 封信）</summary>${eventsHtml}</details>` +
     `<details class="magic-details"><summary>待触发互动</summary><ul class="family-beat-list">${beatHtml}</ul></details>`;
 }
 

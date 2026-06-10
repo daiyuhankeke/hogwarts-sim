@@ -26,8 +26,6 @@ import {
 } from './ui.js';
 import { applySceneVisual } from './scene-visuals.js';
 import { inferMagicGains, applyInferredMagicGains } from './magic-inference.js';
-import { formatTodayClassHint } from './timetable.js';
-import { resolveOptions, buildContextualOptions } from './contextual-options.js';
 import {
   isGraduationReady,
   selectCareer,
@@ -74,18 +72,21 @@ function isHogsmeadeOption(option) {
   return /霍格莫德|hogsmeade/i.test(option.text || '');
 }
 
+function normalizeOptions(options) {
+  if (!Array.isArray(options)) return [];
+  return options
+    .filter((o) => o && o.id && o.text)
+    .slice(0, 6)
+    .map((o) => ({ id: String(o.id).toUpperCase().slice(0, 1), text: String(o.text) }));
+}
+
 export function getOptionsForState(aiOptions) {
   const gameState = getGameState();
-  if (!gameState) return buildContextualOptions(null);
-  if (isGraduationReady(gameState)) {
+  if (gameState && isGraduationReady(gameState)) {
     return buildGraduationCareerOptions(gameState);
   }
-  const narrative = gameState.lastNarrative
-    || gameState.history?.[gameState.history.length - 1]?.narrative
-    || '';
-  const classHint = formatTodayClassHint(gameState);
-  const options = aiOptions ?? getLastResponse()?.options ?? gameState.lastOptions;
-  return resolveOptions(options, gameState, narrative, classHint);
+  const options = aiOptions ?? getLastResponse()?.options ?? gameState?.lastOptions;
+  return normalizeOptions(options);
 }
 
 export function bootstrapTurnView(narrativeHint) {

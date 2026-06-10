@@ -117,9 +117,7 @@ export function deriveFamilyNpcTies(family) {
 
 export function createInitialFamilyTrack(family) {
   return {
-    recentEvents: [],
     lastBeatWeek: 0,
-    lettersReceived: 0,
     npcTies: deriveFamilyNpcTies(family),
   };
 }
@@ -130,9 +128,7 @@ export function migrateFamilyTrack(state) {
   const base = createInitialFamilyTrack(family);
   if (!existing) return base;
   return {
-    ...base,
-    ...existing,
-    recentEvents: (existing.recentEvents || []).slice(0, 8),
+    lastBeatWeek: existing.lastBeatWeek || 0,
     npcTies: existing.npcTies?.length ? existing.npcTies : base.npcTies,
   };
 }
@@ -205,7 +201,6 @@ export function getFamilyInteractionContext(state) {
 
   return {
     npcTies: track.npcTies,
-    recentEvents: track.recentEvents.slice(0, 3),
     suggestedBeats: beats,
     weeksSinceLastBeat: weeksSince,
     shouldPromptFamilyBeat: weeksSince >= 5,
@@ -224,26 +219,14 @@ const FAMILY_NARRATIVE_PATTERNS = [
 export function processFamilyAfterTurn(state, narrative = '') {
   const track = migrateFamilyTrack(state);
   const week = state.time?.week ?? 1;
-  let updated = false;
 
   for (const pat of FAMILY_NARRATIVE_PATTERNS) {
     if (pat.re.test(narrative)) {
-      const snippet = narrative.match(pat.re)?.[0]?.slice(0, 40) || pat.title;
-      track.recentEvents.unshift({
-        week,
-        type: pat.type,
-        title: pat.title,
-        text: snippet + (narrative.length > 40 ? '…' : ''),
-      });
       track.lastBeatWeek = week;
-      if (pat.type === 'letter') track.lettersReceived += 1;
-      updated = true;
-      break;
+      return track;
     }
   }
-
-  track.recentEvents = track.recentEvents.slice(0, 8);
-  return updated ? track : null;
+  return null;
 }
 
 export function getAttitudeClass(attitude) {

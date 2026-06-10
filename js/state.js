@@ -52,9 +52,22 @@ export function migrateRelationships(relationships) {
   return rel;
 }
 
+/** 旧存档兼容：移除已废弃的 player.mood */
+function stripLegacyPlayerFields(state) {
+  if (!state?.player || state.player.mood === undefined) return;
+  const { mood, ...rest } = state.player;
+  state.player = rest;
+}
+
 /** 统一存档/导入后的状态迁移与补全 */
 export function normalizeLoadedState(state) {
   if (!state?.profile) return state;
+
+  stripLegacyPlayerFields(state);
+
+  if (state.profile?.target === '双子夹心') {
+    state.profile.target = '先不选';
+  }
 
   if (state.relationships) state.relationships = migrateRelationships(state.relationships);
   if (state.profile?.year) {
@@ -95,8 +108,8 @@ export function createInitialState(rawProfile) {
     profile,
     time: { week: 1, weekday: year === 1 ? '周日' : '周一', season: '秋' },
     scene: { location: year === 1 ? '国王十字车站' : '霍格沃茨城堡', weather: '阴' },
-    player: { mood: 70 },
-    currentTarget: profile.target === '先不选' || profile.target === '双子夹心' ? null : profile.target,
+    player: {},
+    currentTarget: profile.target === '先不选' ? null : profile.target,
     relationships: createInitialRelationships(),
     npcYears: computeNpcYears(year),
     flags: {
@@ -131,7 +144,6 @@ export function mergeStateUpdate(state, update) {
 
   if (update.time) next.time = { ...next.time, ...update.time };
   if (update.scene) next.scene = { ...next.scene, ...update.scene };
-  if (update.player) next.player = { ...next.player, ...update.player };
   if (update.currentTarget !== undefined) next.currentTarget = update.currentTarget;
   if (update.summary) next.summary = update.summary;
 

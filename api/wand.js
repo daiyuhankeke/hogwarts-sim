@@ -12,7 +12,7 @@ export default async function handler(req, res) {
 
   try {
     const body = getBody(req);
-    const { profile, inviteCode, withImage = false, useFallback = false } = body;
+    const { profile, inviteCode, useFallback = false } = body;
 
     if (!profile?.name) {
       return sendJson(res, 400, { error: '缺少角色信息' });
@@ -34,7 +34,7 @@ export default async function handler(req, res) {
       wand = generateFallbackWand(profile);
     } else {
       try {
-        wand = await generateWandWithAI(profile, { withImage: !!withImage });
+        wand = await generateWandWithAI(profile);
       } catch {
         wand = generateFallbackWand(profile);
       }

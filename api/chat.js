@@ -1,7 +1,7 @@
 import { buildSystemPrompt } from '../lib/loadPrompts.js';
 import { callAI, buildMessages } from '../lib/callAI.js';
 import { compactStateForAI } from '../lib/compactState.js';
-import { extractJson, validateResponse, buildJsonRetryHint } from '../lib/parseResponse.js';
+import { extractJson, validateResponse, buildJsonRetryHint, salvageChatResponse } from '../lib/parseResponse.js';
 import { sanitizeStateUpdate } from '../lib/validateStateUpdate.js';
 import { checkRateLimit, verifyInviteCode } from '../lib/rateLimit.js';
 import { checkCanonicalViolations, buildCanonicalRetryHint } from '../lib/canonicalGuard.js';
@@ -80,16 +80,26 @@ async function requestAI(messages, { isRetry = false } = {}) {
   for (let attempt = 0; attempt < MAX_JSON_ATTEMPTS; attempt++) {
     let raw;
     try {
-      raw = await callAI(messages, { temperature, jsonMode: true });
+      raw = await callAI(messages, { temperature, jsonMode: true, forChat: true });
     } catch (aiErr) {
       if (aiErr.message?.includes('response_format')) {
-        raw = await callAI(messages, { temperature, jsonMode: false });
+        raw = await callAI(messages, { temperature, jsonMode: false, forChat: true });
       } else {
         throw aiErr;
       }
     }
 
     lastRaw = raw;
+
+    const salvaged = salvageChatResponse(raw);
+    if (salvaged) {
+      const validation = validateResponse(salvaged);
+      if (validation.valid) {
+        if (!extractJson(raw)) console.warn('chat: salvaged partial JSON');
+        return salvaged;
+      }
+    }
+
     const parsed = extractJson(raw);
     const validation = validateResponse(parsed);
 

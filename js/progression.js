@@ -16,6 +16,18 @@ export const CLUB_OPTIONS = [
 
 export const MAX_CLUBS = 3;
 
+/** 各社团最早可加入年级（须与原著时间线一致） */
+export const CLUB_AVAILABILITY = {
+  da: { minYear: 5, note: '哈利五年级乌姆里奇掌权后，赫敏与哈利组建 D.A.' },
+  quidditch: { minYear: 1, note: '每年开学前后校队选拔，赛季贯穿学年' },
+  dueling: { minYear: 2, note: '二年级洛哈特曾办决斗俱乐部；之后可有练习小组' },
+  slug: { minYear: 6, note: '斯拉格霍恩六年级返校后招募俱乐部成员' },
+  library: { minYear: 1, note: '图书馆研究组，随时可加入' },
+  creature: { minYear: 1, note: '海格场地神奇生物活动，一年级起可参与' },
+  gobstones: { minYear: 1, note: '戈布石休闲社，随时可参与' },
+  charms: { minYear: 2, note: '魔咒实验社，二年级起较常见' },
+};
+
 export const AFFECTION_MILESTONES = [
   { id: 'first_notice', at: 21, title: '留下印象', template: '与{name}从陌生人变为「有印象」' },
   { id: 'interest', at: 41, title: '引起兴趣', template: '{name}开始对你产生兴趣' },
@@ -82,7 +94,7 @@ export function createInitialProgression(profile) {
     memories: [],
     milestones: {},
     gossip: { level: 0, rumors: [] },
-    clubs: profile.clubs ?? [],
+    clubs: [],
     clubActivityCount: 0,
     eventPrep: { active: null, label: '', weeksUntil: 0, steps: [], completed: [] },
     exams: { active: false, type: year >= 5 ? 'owl' : null, stress: 0, reviewedSubjects: [], weekStarted: null },
@@ -120,7 +132,9 @@ function normalizeProgression(prog, profile) {
     milestones: prog.milestones || {},
     achievements: prog.achievements || [],
     memories: (prog.memories || []).slice(0, 20),
-    clubs: prog.clubs?.length ? prog.clubs : (profile?.clubs || []),
+    clubs: prog.clubs?.length
+      ? prog.clubs.slice(0, MAX_CLUBS)
+      : (profile?.clubs?.length ? profile.clubs.slice(0, MAX_CLUBS) : []),
     wandNotes: prog.wandNotes || buildWandAffinityNotes(profile?.wand),
     familyTrack: migrateFamilyTrack({ profile, progression: prog }),
   };
@@ -158,6 +172,12 @@ export function mergeProgressionUpdate(current, update) {
     }
   }
   if (update.clubActivity) next.clubActivityCount += 1;
+  if (Array.isArray(update.clubsJoined) && update.clubsJoined.length) {
+    next.clubs = [...new Set([...next.clubs, ...update.clubsJoined])].slice(0, MAX_CLUBS);
+  }
+  if (Array.isArray(update.clubs)) {
+    next.clubs = update.clubs.slice(0, MAX_CLUBS);
+  }
   if (update.eventPrep) Object.assign(next.eventPrep, update.eventPrep);
   if (update.exams) Object.assign(next.exams, update.exams);
   if (update.patronusCeremony) Object.assign(next.patronusCeremony, update.patronusCeremony);
@@ -166,9 +186,6 @@ export function mergeProgressionUpdate(current, update) {
   }
   if (update.familyTrack) {
     next.familyTrack = { ...next.familyTrack, ...update.familyTrack };
-    if (update.familyTrack.recentEvents) {
-      next.familyTrack.recentEvents = update.familyTrack.recentEvents.slice(0, 8);
-    }
   }
 
   return next;
@@ -305,6 +322,29 @@ export function processAfterTurn(state, stateBefore, narrative = '') {
 
 export function getClubNames(clubIds) {
   return clubIds.map((id) => CLUB_OPTIONS.find((c) => c.id === id)?.name || id).filter(Boolean);
+}
+
+export function getClubAvailabilityContext(state) {
+  const year = state.profile?.year ?? 1;
+  const joined = state.progression?.clubs ?? [];
+  const canJoin = [];
+  const notYetAvailable = [];
+
+  for (const club of CLUB_OPTIONS) {
+    const rule = CLUB_AVAILABILITY[club.id] || { minYear: 1, note: '' };
+    const entry = { id: club.id, name: club.name, minYear: rule.minYear, note: rule.note };
+    if (joined.includes(club.id)) continue;
+    if (year >= rule.minYear) canJoin.push(entry);
+    else notYetAvailable.push(entry);
+  }
+
+  return {
+    joined: getClubNames(joined),
+    joinedIds: joined,
+    canJoin,
+    notYetAvailable,
+    slotsLeft: Math.max(0, MAX_CLUBS - joined.length),
+  };
 }
 
 export function getGossipLabel(level) {

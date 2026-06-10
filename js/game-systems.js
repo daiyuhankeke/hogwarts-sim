@@ -1,11 +1,31 @@
 import { getStageFromAffection, ROMANCE_TARGETS } from './state.js';
 import { getNpcScheduleContext } from './npc-schedules.js';
-import { getPlaythroughHook, getClubNames, getGossipLabel } from './progression.js';
+import { getPlaythroughHook, getClubNames, getGossipLabel, getClubAvailabilityContext } from './progression.js';
 import { getTimetableContext } from './timetable.js';
 import { getCanonicalPlotContext, getCanonEventsForCalendar } from './canonical-storyline.js';
 import { getFamilyInteractionContext } from './family-interactions.js';
-import { getSceneOptionHint, detectSceneContext, isAtHogwarts } from './contextual-options.js';
 import { getCareerContext } from './career-system.js';
+
+function isAtHogwarts(state) {
+  const loc = state?.scene?.location ?? '';
+  return /霍格沃茨|城堡|图书馆|公共休息室|大礼堂|教室|走廊|温室|魁地奇|魔药|魔咒|变形|地窖|塔|格兰芬多|斯莱特林|拉文克劳|赫奇帕奇/.test(loc);
+}
+
+function getSceneOptionHint(state, narrative = '') {
+  const loc = state?.scene?.location ?? '未知';
+  const weekday = state?.time?.weekday ?? '';
+  const year = state?.profile?.year ?? 1;
+  const tail = (narrative || '').slice(-500);
+  const parts = [
+    `scene.location=${loc}`,
+    weekday ? `weekday=${weekday}` : '',
+    year >= 3 && weekday === '周六' ? '周六可去霍格莫德' : '',
+    isAtHogwarts(state) ? '已入学，勿给出特快/国王十字/对角巷/分院前等过期选项' : '',
+    tail ? `narrative 末尾：…${tail.slice(-220)}` : '',
+    'options 须承接 narrative 末尾正在发生的事',
+  ];
+  return parts.filter(Boolean).join('；');
+}
 
 const EVENT_CALENDAR = [
   { id: 'opening_feast', week: 1, label: '开学宴会' },
@@ -41,12 +61,6 @@ export function checkEnding(state) {
 
   if (allAffections.every((a) => a >= 85)) {
     return { type: 'HE_万人迷', label: '万人迷结局已解锁' };
-  }
-
-  const fred = rel['弗雷德']?.affection ?? 0;
-  const george = rel['乔治']?.affection ?? 0;
-  if (fred >= 75 && george >= 75) {
-    return { type: 'HE_双子', label: '双子夹心结局可触发' };
   }
 
   for (const name of ROMANCE_TARGETS) {
@@ -104,7 +118,6 @@ export function buildEventContext(state) {
   const canonPlot = getCanonicalPlotContext(state);
   const familyInteraction = getFamilyInteractionContext(state);
   const lastNarrative = state.lastNarrative || state.history?.[state.history.length - 1]?.narrative || '';
-  const sceneCtx = detectSceneContext(state, lastNarrative);
 
   return {
     upcomingEvents: upcoming.map((e) => e.label),
@@ -119,6 +132,7 @@ export function buildEventContext(state) {
     gossipLevel: prog?.gossip?.level ?? 0,
     gossipLabel: getGossipLabel(prog?.gossip?.level ?? 0),
     clubs: getClubNames(prog?.clubs ?? []),
+    clubAvailability: getClubAvailabilityContext(state),
     eventPrep: prog?.eventPrep?.active ? prog.eventPrep : null,
     examWeek: prog?.exams?.active ?? false,
     patronusProgress: prog?.patronusCeremony?.progress ?? 0,
@@ -135,8 +149,7 @@ export function buildEventContext(state) {
     familyInteraction,
     career: getCareerContext(state),
     sceneOptionHint: getSceneOptionHint(state, lastNarrative),
-    detectedScene: sceneCtx.label,
-    atHogwarts: isAtHogwarts(state, lastNarrative),
+    atHogwarts: isAtHogwarts(state),
     dmReminder: '每 5 回合须推进至少一项：学业/感情/学院事件/魔法/社团/原著主线/家庭线。大事件准备期请给准备阶段选项。主线须对齐 canonPlot。options 必须与本回合 narrative 末尾场景一致，见 sceneOptionHint。'
       + (familyInteraction.familyPrompt ? ` ${familyInteraction.familyPrompt}` : ''),
   };

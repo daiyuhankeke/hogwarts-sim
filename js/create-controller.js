@@ -4,8 +4,10 @@ import {
   DEFAULT_APPEARANCE,
   TALENT_PRESETS,
   TARGET_GROUPS,
+  applyRandomAppearanceToForm,
+  fitAppearanceField,
 } from './character-config.js';
-import { CLUB_OPTIONS, MAX_CLUBS, getPlaythroughHook, getClubNames } from './progression.js';
+import { getPlaythroughHook } from './progression.js';
 import {
   showScreen,
   applyHouseTheme,
@@ -88,17 +90,7 @@ export function initCharacterFormOptions() {
   }
 
   document.getElementById('wand-generate-btn')?.addEventListener('click', () => generateWand(false));
-  document.getElementById('wand-generate-image-btn')?.addEventListener('click', () => generateWand(true));
-  document.getElementById('wand-fallback-btn')?.addEventListener('click', () => generateWand(false, true));
-
-  const clubContainer = document.getElementById('club-presets');
-  if (clubContainer) {
-    clubContainer.innerHTML = CLUB_OPTIONS.map(
-      (c) =>
-        `<label class="talent-chip" title="${c.desc}"><input type="checkbox" name="clubPreset" value="${c.id}"><span>${c.name}</span></label>`
-    ).join('');
-    clubContainer.addEventListener('change', limitClubSelection);
-  }
+  document.getElementById('wand-fallback-btn')?.addEventListener('click', () => generateWand(true));
 
   document.getElementById('audio-toggle-btn')?.addEventListener('click', () => {
     const on = toggleAudio();
@@ -111,18 +103,16 @@ export function initCharacterFormOptions() {
   updateAudioButton();
   initFamilyFormOptions();
   bindFamilyFormEvents();
+  bindAppearanceControls();
+  applyRandomAppearanceToForm();
 }
 
-function limitClubSelection(e) {
-  const checked = [...document.querySelectorAll('input[name="clubPreset"]:checked')];
-  if (checked.length > MAX_CLUBS) {
-    e.target.checked = false;
-    showCreateError(`最多选择 ${MAX_CLUBS} 个社团`);
-  }
-}
-
-function collectClubs(form) {
-  return [...form.querySelectorAll('input[name="clubPreset"]:checked')].map((el) => el.value).slice(0, MAX_CLUBS);
+function bindAppearanceControls() {
+  const field = document.getElementById('player-appearance');
+  field?.addEventListener('input', () => fitAppearanceField(field));
+  document.getElementById('appearance-random-btn')?.addEventListener('click', () => {
+    applyRandomAppearanceToForm();
+  });
 }
 
 function updateAudioButton() {
@@ -299,19 +289,18 @@ function collectProfileFromForm(form) {
     house: form.house.value,
     year: Number(form.year.value),
     bloodStatus: form.bloodStatus.value,
-    appearance: form.appearance.value,
+    appearance: form.appearance.value.trim() || applyRandomAppearanceToForm(form),
     talents: collectTalents(form),
     custom: form.custom.value,
     target: form.target.value,
     tone: form.tone.value,
     saveCedric: form.saveCedric?.checked ?? false,
-    clubs: collectClubs(form),
     wand: getPendingWand(),
     family: collectFamilyFromForm(form),
   };
 }
 
-async function generateWand(withImage = false, useFallback = false) {
+async function generateWand(useFallback = false) {
   const form = document.getElementById('character-form');
   if (!form) return;
 
@@ -320,10 +309,9 @@ async function generateWand(withImage = false, useFallback = false) {
   delete profile.wand;
 
   const btn = document.getElementById('wand-generate-btn');
-  const imgBtn = document.getElementById('wand-generate-image-btn');
   const fallbackBtn = document.getElementById('wand-fallback-btn');
   const statusEl = document.getElementById('wand-status');
-  [btn, imgBtn, fallbackBtn].forEach((b) => { if (b) b.disabled = true; });
+  [btn, fallbackBtn].forEach((b) => { if (b) b.disabled = true; });
   if (statusEl) statusEl.textContent = '奥利凡德正在翻找魔杖盒……';
 
   try {
@@ -333,7 +321,6 @@ async function generateWand(withImage = false, useFallback = false) {
       body: JSON.stringify({
         profile,
         inviteCode: getInviteCode(),
-        withImage,
         useFallback,
       }),
     });
@@ -348,7 +335,7 @@ async function generateWand(withImage = false, useFallback = false) {
     if (statusEl) statusEl.textContent = '';
     showCreateError(err.message || '魔杖生成失败，可尝试「快速生成」');
   } finally {
-    [btn, imgBtn, fallbackBtn].forEach((b) => { if (b) b.disabled = false; });
+    [btn, fallbackBtn].forEach((b) => { if (b) b.disabled = false; });
   }
 }
 
@@ -370,8 +357,6 @@ function buildStartMessage(profile) {
   if (p.saveCedric) msg += `玩家希望在三强赛中拯救塞德里克。\n`;
   const hook = getPlaythroughHook(p.year);
   msg += `本局原著主线：${hook.label}（${hook.hint}）。须与哈利·波特同期事件对齐，哈利为剧情核心，玩家为参与者。\n`;
-  const clubs = getClubNames(p.clubs || []);
-  if (clubs.length) msg += `参加社团：${clubs.join('、')}\n`;
   return msg;
 }
 
@@ -417,6 +402,7 @@ export function bindNewGameControl() {
       closeCareerSelectionModal();
       clearSceneVisual();
       showScreen('create-screen');
+      applyRandomAppearanceToForm();
     }
   });
 }
