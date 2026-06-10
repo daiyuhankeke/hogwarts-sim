@@ -5,7 +5,6 @@ import { setGameState } from './game-store.js';
 import {
   bootstrapTurnView,
   bindGameTurnControls,
-  bindCareerControls,
   getOptionsForState,
   handleOptionSelect,
   renderGameUI,
@@ -27,7 +26,6 @@ function init() {
   bindSaveControls();
   bindInviteCode();
   bindGameTurnControls();
-  bindCareerControls();
 
   const saved = loadGame(0);
   if (saved) {

@@ -38,19 +38,29 @@ export default async function handler(req, res) {
 
     const compactState = compactStateForAI(state);
     const systemPrompt = buildSystemPrompt(compactState, eventContext);
-    let messages = buildMessages(systemPrompt, history, action, { summary: compactState?.summary });
+    let messages = buildMessages(systemPrompt, history, action);
 
+    const t0 = Date.now();
     let parsed = await requestAI(messages, { isRetry });
+    const aiMs = Date.now() - t0;
 
-    let canon = checkCanonicalViolations(parsed?.narrative);
+    let canon = checkCanonicalViolations(parsed?.narrative, {
+      year: compactState?.profile?.year,
+      week: compactState?.time?.week,
+    });
     if (!canon.ok) {
       messages = [
         ...messages,
         { role: 'assistant', content: JSON.stringify({ narrative: parsed.narrative?.slice(0, 200) }) },
         { role: 'user', content: buildCanonicalRetryHint(canon) },
       ];
+      const t1 = Date.now();
       parsed = await requestAI(messages, { isRetry: true });
-      canon = checkCanonicalViolations(parsed?.narrative);
+      console.warn(`chat canonical retry: +${Date.now() - t1}ms (${canon.id})`);
+      canon = checkCanonicalViolations(parsed?.narrative, {
+        year: compactState?.profile?.year,
+        week: compactState?.time?.week,
+      });
       if (!canon.ok) {
         console.warn('canonical guard still failing:', canon.id, canon.reason);
       }
@@ -59,6 +69,8 @@ export default async function handler(req, res) {
     if (parsed.stateUpdate) {
       parsed = { ...parsed, stateUpdate: sanitizeStateUpdate(parsed.stateUpdate) };
     }
+
+    console.log(`chat ok: ai=${aiMs}ms turns=${state?.turnCount ?? '?'} narrative=${parsed.narrative?.length ?? 0}字`);
 
     return sendJson(res, 200, parsed);
   } catch (err) {
@@ -106,7 +118,7 @@ async function requestAI(messages, { isRetry = false } = {}) {
     if (validation.valid) return parsed;
 
     lastError = validation.error;
-    console.warn(`JSON parse attempt ${attempt + 1} failed:`, validation.error);
+    console.warn(`JSON parse attempt ${attempt + 1} failed:`, validation.error, `(raw ${String(raw).length} chars)`);
 
     if (attempt < MAX_JSON_ATTEMPTS - 1) {
       messages = [

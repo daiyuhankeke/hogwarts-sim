@@ -175,7 +175,6 @@
         "saveCedric": { "type": "boolean" },
         "eventsTriggered": { "type": "array", "items": { "type": "string" } },
         "ending": { "type": ["string", "null"] },
-        "graduated": { "type": "boolean" },
         "canonPlot": {
           "type": "object",
           "properties": {
@@ -271,20 +270,6 @@
           "properties": {
             "lastBeatWeek": { "type": "integer" },
             "npcTies": { "type": "array" }
-          }
-        }
-      }
-    },
-    "career": {
-      "type": "object",
-      "properties": {
-        "chosenId": { "type": ["string", "null"] },
-        "chosenName": { "type": ["string", "null"] },
-        "chosenAt": {
-          "type": ["object", "null"],
-          "properties": {
-            "week": { "type": "integer" },
-            "weekday": { "type": "string" }
           }
         }
       }

@@ -92,8 +92,8 @@ export const CANON_PLOT_BY_YEAR = {
   7: {
     title: '哈利·波特与死亡圣器（霍格沃茨篇）',
     beats: [
-      { id: 'carrows_reign', week: 1, label: '卡罗兄妹掌权', summary: '食死徒控制学校；黑魔法防御教钻心咒；魔药课强化惩罚。', mandatory: true },
-      { id: 'underground_resistance', week: 6, label: '地下抵抗', summary: 'D.A. 重组；有求必应屋；纳威领导；哈利等人缺席（可通信）。', mandatory: false },
+      { id: 'carrows_reign', week: 1, label: '卡罗兄妹掌权', summary: '食死徒控制学校；黑魔法防御教钻心咒。**哈利、罗恩、赫敏不在校**（在外狩猎魂器）；校内由纳威、金妮、卢娜等维持 D.A. 抵抗。', mandatory: true },
+      { id: 'underground_resistance', week: 6, label: '地下抵抗', summary: 'D.A. 重组；有求必应屋；纳威领导。**禁止把哈利/罗恩/赫敏写在大礼堂、课堂、图书馆等校内日常场景**；仅可提及校外消息或《唱唱反调》传闻。', mandatory: false },
       { id: 'taboo_hunt', week: 12, label: '魂器 hunt 背景', summary: '校外哈利寻魂器；校内玩家听闻零星消息；斯内普校长。', mandatory: false },
       { id: 'harry_returns', week: 28, label: '哈利回校', summary: '哈利、罗恩、赫敏潜入；拉文克劳冠冕线索；失踪柜。', mandatory: true },
       { id: 'battle_hogwarts', week: 32, label: '霍格沃茨大战', summary: '食死徒围攻；疏散；斯内普之死与记忆；哈利赴禁林；伏地魔终亡。', mandatory: true },
@@ -115,28 +115,65 @@ export function createInitialCanonPlot(year) {
   };
 }
 
-export function migrateCanonPlot(state) {
-  const year = state.profile?.year ?? 1;
-  if (state.flags?.canonPlot?.year === year) {
-    return {
-      year,
-      title: state.flags.canonPlot.title || getCanonPlotForYear(year).title,
-      completed: state.flags.canonPlot.completed || [],
-      divergences: state.flags.canonPlot.divergences || [],
-    };
-  }
-  const plot = createInitialCanonPlot(year);
-  // 高年级开局：假定此前学年主线已在背景中发生
-  if (year > 1) {
-    const prevBeats = [];
-    for (let y = 1; y < year; y++) {
-      const p = getCanonPlotForYear(y);
-      prevBeats.push(...p.beats.filter((b) => b.mandatory).map((b) => `${y}:${b.id}`));
+/** 将 AI/旧存档的无前缀 beat id 规范为「年级:id」 */
+function normalizeCompletedKeys(completed, year) {
+  const seen = new Set();
+  const out = [];
+  for (const raw of completed || []) {
+    const key = String(raw).includes(':') ? String(raw) : `${year}:${raw}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(key);
     }
-    plot.completed = prevBeats;
+  }
+  return out;
+}
+
+function markPreviousYearMandatoryCompleted(plot, year) {
+  for (let y = 1; y < year; y++) {
+    for (const beat of getCanonPlotForYear(y).beats) {
+      if (!beat.mandatory) continue;
+      const key = `${y}:${beat.id}`;
+      if (!plot.completed.includes(key)) plot.completed.push(key);
+    }
+  }
+  if (year > 1 && !plot.divergences.some((d) => d.includes('年级入学'))) {
     plot.divergences.push(`玩家自 ${year} 年级入学，一至 ${year - 1} 学年原著主线视为已发生（背景摘要）`);
   }
+}
+
+export function migrateCanonPlot(state) {
+  const year = state.profile?.year ?? 1;
+  const existing = state.flags?.canonPlot;
+
+  if (existing?.year === year) {
+    return {
+      year,
+      title: existing.title || getCanonPlotForYear(year).title,
+      completed: normalizeCompletedKeys(existing.completed, year),
+      divergences: existing.divergences || [],
+    };
+  }
+
+  // AI 浅合并可能抹掉 year，或写入错误年级 — 保留已完成的当前学年节点并修复
+  if (existing && (existing.year == null || existing.year === undefined)) {
+    const plot = {
+      year,
+      title: getCanonPlotForYear(year).title,
+      completed: normalizeCompletedKeys(existing.completed, year),
+      divergences: existing.divergences || [],
+    };
+    if (year > 1) markPreviousYearMandatoryCompleted(plot, year);
+    return plot;
+  }
+
+  const plot = createInitialCanonPlot(year);
+  if (year > 1) markPreviousYearMandatoryCompleted(plot, year);
   return plot;
+}
+
+function isBeatCompleted(completed, year, beatId) {
+  return completed.has(`${year}:${beatId}`);
 }
 
 export function getDueBeat(plot, week) {
@@ -145,7 +182,7 @@ export function getDueBeat(plot, week) {
 
   for (const beat of yearPlot.beats) {
     const key = `${plot.year}:${beat.id}`;
-    if (completed.has(key) || completed.has(beat.id)) continue;
+    if (isBeatCompleted(completed, plot.year, beat.id)) continue;
     const end = beat.weekEnd ?? beat.week;
     if (week >= beat.week - 1 && week <= end + 2) {
       return { ...beat, key, overdue: week > end + 1 };
@@ -160,7 +197,7 @@ export function getNextMandatoryBeat(plot) {
   for (const beat of yearPlot.beats) {
     if (!beat.mandatory) continue;
     const key = `${plot.year}:${beat.id}`;
-    if (!completed.has(key) && !completed.has(beat.id)) {
+    if (!isBeatCompleted(completed, plot.year, beat.id)) {
       return { ...beat, key };
     }
   }
@@ -173,23 +210,29 @@ export function getUpcomingCanonBeats(plot, week, limit = 4) {
   return yearPlot.beats
     .filter((b) => {
       const key = `${plot.year}:${b.id}`;
-      return !completed.has(key) && !completed.has(b.id) && b.week >= week;
+      return !isBeatCompleted(completed, plot.year, b.id) && b.week >= week;
     })
     .slice(0, limit)
     .map((b) => ({ ...b, key: `${plot.year}:${b.id}` }));
 }
 
-export function mergeCanonPlotUpdate(plot, update) {
+export function mergeCanonPlotUpdate(plot, update, profileYear) {
   if (!update) return plot;
-  const next = { ...plot, completed: [...(plot.completed || [])] };
+  const year = profileYear ?? plot?.year ?? 1;
+  const next = {
+    year,
+    title: getCanonPlotForYear(year).title,
+    completed: normalizeCompletedKeys(plot?.completed, year),
+    divergences: [...(plot?.divergences || [])],
+  };
   if (update.completed) {
     for (const id of update.completed) {
-      const key = id.includes(':') ? id : `${plot.year}:${id}`;
+      const key = String(id).includes(':') ? String(id) : `${year}:${id}`;
       if (!next.completed.includes(key)) next.completed.push(key);
     }
   }
   if (update.divergence) {
-    next.divergences = [...(next.divergences || []), update.divergence].slice(-5);
+    next.divergences = [...next.divergences, update.divergence].slice(-5);
   }
   return next;
 }
@@ -198,7 +241,7 @@ export function mergeCanonPlotUpdate(plot, update) {
 export function getCanonicalPlotContext(state) {
   const year = state.profile?.year ?? 1;
   const week = state.time?.week ?? 1;
-  const plot = state.flags?.canonPlot || migrateCanonPlot(state);
+  const plot = migrateCanonPlot(state);
   const yearPlot = getCanonPlotForYear(year);
   const due = getDueBeat(plot, week);
   const nextMandatory = getNextMandatoryBeat(plot);
@@ -214,9 +257,24 @@ export function getCanonicalPlotContext(state) {
   if (year === 4 && saveCedric) {
     dmRules.push('玩家希望拯救塞德里克：迷宫/墓地场景中可安排玩家行动使塞德里克存活，但伏地魔复活仍须发生。');
   }
-  if (year >= 5) {
+  if (year >= 5 && year < 7) {
     dmRules.push('乌姆里奇、D.A.、神秘事务司等五年级主线不可省略（若玩家为五年级）。');
   }
+  if (year === 7) {
+    const harryBack = week >= 28;
+    if (harryBack) {
+      dmRules.push('第28周起哈利、罗恩、赫敏已潜入霍格沃茨，可写短暂同场直至大战；此前学年三人不在校。');
+    } else {
+      dmRules.push(
+        '【七年级硬性规则】哈利·波特、罗恩·韦斯莱、赫敏·格兰杰整学年在外逃亡狩猎魂器，不在霍格沃茨上课、用餐、图书馆或日常社交。',
+        '禁止把三人写在大礼堂/课堂/公共休息室与玩家同桌、早餐、讨论抵抗计划；校内抵抗由纳威·隆巴顿、金妮·韦斯莱、卢娜·洛夫古德等带领。',
+        '若需提及三人，仅限校外消息、预言家日报、《唱唱反调》传闻或玩家回忆，不可实体出场。',
+      );
+    }
+  }
+
+  const harryReturnsWeek = 28;
+  const goldenTrioAbsent = year === 7 && week < harryReturnsWeek;
 
   return {
     year,
@@ -228,6 +286,9 @@ export function getCanonicalPlotContext(state) {
     completedCount: (plot.completed || []).filter((k) => String(k).startsWith(`${year}:`) || !String(k).includes(':')).length,
     totalBeats: yearPlot.beats.length,
     saveCedricBranch: year === 4 && saveCedric,
+    absentFromHogwarts: goldenTrioAbsent ? ['哈利·波特', '罗恩·韦斯莱', '赫敏·格兰杰'] : [],
+    onCampusFocus: goldenTrioAbsent ? ['纳威·隆巴顿', '金妮·韦斯莱', '卢娜·洛夫古德'] : null,
+    harryReturnsWeek: year === 7 ? harryReturnsWeek : null,
     dmRules: dmRules.join(' '),
     dmHint: due
       ? `【本阶段主线】第${week}周应推进「${due.label}」：${due.summary}`
@@ -239,15 +300,12 @@ export function getCanonicalPlotContext(state) {
 
 export function getCanonEventsForCalendar(state) {
   const year = state.profile?.year ?? 1;
-  const plot = getCanonPlotForYear(year);
+  const yearPlot = getCanonPlotForYear(year);
   const week = state.time?.week ?? 1;
-  const completed = new Set(state.flags?.canonPlot?.completed || []);
+  const completed = new Set(migrateCanonPlot(state).completed || []);
 
-  return plot.beats
-    .filter((b) => {
-      const key = `${year}:${b.id}`;
-      return !completed.has(key) && !completed.has(b.id) && b.week >= week && b.week <= week + 4;
-    })
+  return yearPlot.beats
+    .filter((b) => !isBeatCompleted(completed, year, b.id) && b.week >= week && b.week <= week + 4)
     .map((b) => ({
       id: b.id,
       week: b.week,

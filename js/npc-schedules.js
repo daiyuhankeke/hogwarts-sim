@@ -19,11 +19,17 @@ export const NPC_SCHEDULES = [
 export function getNpcScheduleContext(state) {
   const weekday = state.time?.weekday ?? '周一';
   const location = state.scene?.location ?? '';
+  const playerYear = state.profile?.year ?? 1;
+  const week = state.time?.week ?? 1;
+  const goldenTrioAbsent = playerYear === 7 && week < 28;
+  const absentNames = goldenTrioAbsent ? new Set(['哈利', '罗恩', '赫敏']) : null;
 
   const likelyHere = [];
   const todaySchedule = [];
 
   for (const npc of NPC_SCHEDULES) {
+    if (absentNames?.has(npc.name)) continue;
+
     const npcYear = state.npcYears?.[npc.name];
     if (npcYear === '尚未入学') continue;
 
@@ -40,8 +46,11 @@ export function getNpcScheduleContext(state) {
     location,
     likelyNpcsHere: likelyHere,
     todayNpcSchedule: todaySchedule.slice(0, 8),
-    hint: likelyHere.length
-      ? `当前场景「${location}」较可能遇到：${likelyHere.join('、')}`
-      : '换地点可提高遇见概率（图书馆→赫敏，魁地奇球场→伍德/哈利）',
+    absentFromHogwarts: goldenTrioAbsent ? ['哈利', '罗恩', '赫敏'] : [],
+    hint: goldenTrioAbsent
+      ? '七年级（第28周前）：哈利、罗恩、赫敏不在霍格沃茨；可找纳威、金妮、卢娜等同场。'
+      : likelyHere.length
+        ? `当前场景「${location}」较可能遇到：${likelyHere.join('、')}`
+        : '换地点可提高遇见概率（图书馆→赫敏，魁地奇球场→伍德/哈利）',
   };
 }

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import chatHandler from './api/chat.js';
 import wandHandler from './api/wand.js';
+import appearanceHandler from './api/appearance.js';
 
 dotenv.config();
 
@@ -75,6 +76,20 @@ const server = http.createServer(async (req, res) => {
         req.body = {};
       }
       await wandHandler(req, res);
+    });
+    return;
+  }
+
+  if (url.pathname === '/api/appearance' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        req.body = body ? JSON.parse(body) : {};
+      } catch {
+        req.body = {};
+      }
+      await appearanceHandler(req, res);
     });
     return;
   }

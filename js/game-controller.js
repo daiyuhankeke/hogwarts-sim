@@ -4,7 +4,7 @@ import {
   addHistoryEntry,
   narrativeForAI,
 } from './state.js';
-import { clampRelationships, buildEventContext, getUpcomingEvents, checkEnding } from './game-systems.js';
+import { clampRelationships, buildEventContext, getUpcomingEvents } from './game-systems.js';
 import {
   renderStatusBar,
   renderNarrative,
@@ -13,26 +13,16 @@ import {
   showError,
   hideError,
   showMagicGains,
-  showMilestoneToast,
-  openCareerSelectionModal,
-  closeCareerSelectionModal,
   renderRelationships,
   renderMagicPanel,
   renderProgressPanel,
-  renderCareerPanel,
   renderFamilyPanel,
   renderTimetablePanel,
   renderEventHints,
 } from './ui.js';
 import { applySceneVisual } from './scene-visuals.js';
 import { inferMagicGains, applyInferredMagicGains } from './magic-inference.js';
-import {
-  isGraduationReady,
-  selectCareer,
-  buildGraduationCareerOptions,
-  getCareerById,
-} from './career-system.js';
-import { detectMilestones, processAfterTurn } from './progression.js';
+import { processAfterTurn } from './progression.js';
 import { sanitizeStateUpdate } from '../lib/validateStateUpdate.js';
 import {
   getGameState,
@@ -40,8 +30,6 @@ import {
   getCurrentSlot,
   getLastResponse,
   setLastResponse,
-  isCareerModalDismissed,
-  setCareerModalDismissed,
 } from './game-store.js';
 
 const API_URL = '/api/chat';
@@ -51,21 +39,19 @@ function getInviteCode() {
   return localStorage.getItem(INVITE_KEY) || '';
 }
 
-export function renderGameUI(gameState = getGameState(), { openCareer = true } = {}) {
+export function renderGameUI(gameState = getGameState()) {
   if (!gameState) return;
   applySceneVisual(gameState);
   renderStatusBar(gameState);
   renderRelationships(gameState);
   renderMagicPanel(gameState);
   renderProgressPanel(gameState);
-  renderCareerPanel(gameState);
   renderFamilyPanel(gameState);
   renderTimetablePanel(gameState);
   const ctx = buildEventContext(gameState);
-  renderEventHints(getUpcomingEvents(gameState).map((e) => e.label), ctx.endingHint);
+  renderEventHints(getUpcomingEvents(gameState).map((e) => e.label));
   document.getElementById('player-name').textContent = gameState.profile.name;
   document.getElementById('player-house').textContent = `${gameState.profile.house} · ${gameState.profile.year}年级`;
-  if (openCareer) maybeOpenCareerModal();
 }
 
 function isHogsmeadeOption(option) {
@@ -82,9 +68,6 @@ function normalizeOptions(options) {
 
 export function getOptionsForState(aiOptions) {
   const gameState = getGameState();
-  if (gameState && isGraduationReady(gameState)) {
-    return buildGraduationCareerOptions(gameState);
-  }
   const options = aiOptions ?? getLastResponse()?.options ?? gameState?.lastOptions;
   return normalizeOptions(options);
 }
@@ -94,51 +77,9 @@ export function bootstrapTurnView(narrativeHint) {
   renderOptions(getOptionsForState(), handleOptionSelect);
 }
 
-export function maybeOpenCareerModal() {
-  const gameState = getGameState();
-  if (!gameState || !isGraduationReady(gameState) || isCareerModalDismissed()) return;
-  openCareerSelectionModal(gameState, handleCareerSelect);
-}
-
-export function handleCareerSelect(careerId) {
-  let gameState = getGameState();
-  if (!gameState) return;
-  try {
-    const career = getCareerById(careerId);
-    gameState = selectCareer(gameState, careerId);
-    setCareerModalDismissed(false);
-    if (gameState.progression && !gameState.progression.achievements.includes('career_chosen')) {
-      gameState.progression.achievements.push('career_chosen');
-    }
-    setGameState(gameState);
-    saveGame(gameState, getCurrentSlot());
-    closeCareerSelectionModal();
-    renderGameUI(gameState);
-    renderOptions(getOptionsForState(), handleOptionSelect);
-    renderNarrative(
-      `🎓 ${gameState.profile.name} 从霍格沃茨毕业了。\n\n` +
-      `她选择了「${career?.name || gameState.career.chosenName}」作为今后的道路。` +
-      `${career ? `\n\n${career.tagline}` : ''}\n\n` +
-      '选择下方行动，或直接输入自定义行动，开启毕业后的新篇章。'
-    );
-    hideError();
-  } catch (err) {
-    showError(err.message);
-  }
-}
-
 export async function handleOptionSelect(option, customDetail) {
   hideError();
   const gameState = getGameState();
-  if (option.careerId) {
-    handleCareerSelect(option.careerId);
-    return;
-  }
-  if (option.openCareerModal && gameState && isGraduationReady(gameState)) {
-    setCareerModalDismissed(false);
-    openCareerSelectionModal(gameState, handleCareerSelect);
-    return;
-  }
   let actionText = `${option.id}. ${option.text}`;
   if (customDetail) actionText = `F. 自定义行动：${customDetail}`;
 
@@ -222,6 +163,7 @@ function applyResponseInner(data, actionLabel) {
 
   if (data.stateUpdate) {
     const sanitized = sanitizeStateUpdate(data.stateUpdate);
+    if (sanitized.currentTarget !== undefined) delete sanitized.currentTarget;
     const clamped = clampRelationships(sanitized, gameState);
     gameState = mergeStateUpdate(gameState, clamped);
   }
@@ -241,9 +183,7 @@ function applyResponseInner(data, actionLabel) {
     }
   }
 
-  const milestones = detectMilestones(stateBefore.relationships || {}, gameState.relationships || {});
   gameState.progression = processAfterTurn(gameState, stateBefore, narrative);
-  if (milestones.length) showMilestoneToast(milestones);
 
   gameState = addHistoryEntry(gameState, actionLabel, narrative);
   if (data.options) {
@@ -258,9 +198,8 @@ function applyResponseInner(data, actionLabel) {
   renderNarrative(narrative);
   renderOptions(getOptionsForState(data.options), handleOptionSelect);
 
-  const ending = checkEnding(gameState);
-  if (data.ending || ending?.type) {
-    showEndingBanner(data.ending || ending.type, data.endingLabel || ending.label);
+  if (data.ending) {
+    showEndingBanner(data.ending, data.endingLabel);
   }
 }
 
@@ -287,25 +226,6 @@ export function bindGameTurnControls() {
     const gameState = getGameState();
     if (gameState?.lastAction) {
       sendTurn(gameState.lastAction, gameState.lastAction, true);
-    }
-  });
-}
-
-export function bindCareerControls() {
-  document.getElementById('career-modal-close')?.addEventListener('click', () => {
-    setCareerModalDismissed(true);
-    closeCareerSelectionModal();
-  });
-  document.querySelector('.career-modal-backdrop')?.addEventListener('click', () => {
-    setCareerModalDismissed(true);
-    closeCareerSelectionModal();
-  });
-
-  const panel = document.getElementById('career-panel');
-  panel?.addEventListener('click', (e) => {
-    const gameState = getGameState();
-    if (e.target.id === 'open-career-modal-btn' && gameState && isGraduationReady(gameState)) {
-      openCareerSelectionModal(gameState, handleCareerSelect);
     }
   });
 }

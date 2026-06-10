@@ -3,8 +3,7 @@ import {
   DEFAULT_NAME,
   DEFAULT_APPEARANCE,
   TALENT_PRESETS,
-  TARGET_GROUPS,
-  applyRandomAppearanceToForm,
+  applyComposedAppearanceToForm,
   fitAppearanceField,
 } from './character-config.js';
 import { getPlaythroughHook } from './progression.js';
@@ -12,9 +11,15 @@ import {
   showScreen,
   applyHouseTheme,
   hideError,
-  closeCareerSelectionModal,
 } from './ui.js';
 import { renderWandPreview } from './wand-ui.js';
+import {
+  renderAppearanceTraitGroups,
+  bindAppearanceTraitLimits,
+  collectAppearanceTraits,
+  formatTraitsSummary,
+  clearAppearanceTraitInputs,
+} from './appearance-config.js';
 import { clearSceneVisual, applySceneVisual } from './scene-visuals.js';
 import { toggleAudio, isAudioEnabled, stopAmbient } from './ambient-audio.js';
 import {
@@ -43,6 +48,7 @@ import {
 } from './game-controller.js';
 
 const WAND_API_URL = '/api/wand';
+const APPEARANCE_API_URL = '/api/appearance';
 const INVITE_KEY = 'hogwarts-invite-code';
 
 function getInviteCode() {
@@ -72,23 +78,6 @@ export function initCharacterFormOptions() {
     document.querySelector('input[name="talentCustom"]')?.addEventListener('input', updateTalentSummary);
   }
 
-  const targetSelect = document.getElementById('target-select');
-  if (targetSelect) {
-    targetSelect.innerHTML = '';
-    for (const group of TARGET_GROUPS) {
-      const og = document.createElement('optgroup');
-      og.label = group.label;
-      for (const name of group.options) {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        og.appendChild(opt);
-      }
-      targetSelect.appendChild(og);
-    }
-    targetSelect.value = '先不选';
-  }
-
   document.getElementById('wand-generate-btn')?.addEventListener('click', () => generateWand(false));
   document.getElementById('wand-fallback-btn')?.addEventListener('click', () => generateWand(true));
 
@@ -104,15 +93,99 @@ export function initCharacterFormOptions() {
   initFamilyFormOptions();
   bindFamilyFormEvents();
   bindAppearanceControls();
-  applyRandomAppearanceToForm();
+  updateAppearanceTraitSummary();
+}
+
+function updateAppearanceTraitSummary() {
+  const form = document.getElementById('character-form');
+  const el = document.getElementById('appearance-trait-summary');
+  if (!form || !el) return;
+  el.textContent = `已选：${formatTraitsSummary(collectAppearanceTraits(form))}`;
 }
 
 function bindAppearanceControls() {
+  const form = document.getElementById('character-form');
+  renderAppearanceTraitGroups(document.getElementById('appearance-trait-groups'));
+  bindAppearanceTraitLimits(form, updateAppearanceTraitSummary);
+
   const field = document.getElementById('player-appearance');
   field?.addEventListener('input', () => fitAppearanceField(field));
-  document.getElementById('appearance-random-btn')?.addEventListener('click', () => {
-    applyRandomAppearanceToForm();
+
+  document.getElementById('appearance-compose-btn')?.addEventListener('click', () => {
+    applyComposedAppearanceToForm(form, { fillRandom: true });
+    const statusEl = document.getElementById('appearance-status');
+    if (statusEl) statusEl.textContent = '已根据标签组合描写，可在下方继续修改。';
   });
+  document.getElementById('appearance-ai-btn')?.addEventListener('click', () => generateAppearance('compose'));
+  document.getElementById('appearance-refine-btn')?.addEventListener('click', () => generateAppearance('refine'));
+}
+
+function applyAppearanceResult(result) {
+  const form = document.getElementById('character-form');
+  const input = form?.appearance ?? form?.elements?.appearance;
+  if (input && result?.appearance) {
+    input.value = result.appearance;
+    fitAppearanceField(input);
+  }
+}
+
+function collectAppearanceProfile(form) {
+  const { name } = resolvePlayerNameFromForm(form);
+  return {
+    name,
+    house: form.house.value,
+    year: Number(form.year.value),
+    bloodStatus: form.bloodStatus.value,
+    appearance: form.appearance.value.trim(),
+    family: collectFamilyFromForm(form),
+  };
+}
+
+async function generateAppearance(mode = 'compose') {
+  const form = document.getElementById('character-form');
+  if (!form) return;
+
+  hideCreateError();
+  const profile = collectAppearanceProfile(form);
+  const appearanceTraits = collectAppearanceTraits(form);
+
+  const composeBtn = document.getElementById('appearance-compose-btn');
+  const aiBtn = document.getElementById('appearance-ai-btn');
+  const refineBtn = document.getElementById('appearance-refine-btn');
+  const statusEl = document.getElementById('appearance-status');
+  [composeBtn, aiBtn, refineBtn].forEach((b) => { if (b) b.disabled = true; });
+  if (statusEl) {
+    statusEl.textContent = mode === 'refine'
+      ? '正在 AI 润色现有描写……'
+      : '正在根据标签 AI 撰写描写……';
+  }
+
+  try {
+    const res = await fetch(APPEARANCE_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profile,
+        appearanceTraits,
+        inviteCode: getInviteCode(),
+        mode,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '外貌生成失败');
+
+    applyAppearanceResult(data.appearance);
+    if (statusEl) {
+      statusEl.textContent = mode === 'refine'
+        ? '润色完成，可继续修改。'
+        : 'AI 描写已生成，可继续修改。';
+    }
+  } catch (err) {
+    if (statusEl) statusEl.textContent = '';
+    showCreateError(err.message || '外貌生成失败');
+  } finally {
+    [composeBtn, aiBtn, refineBtn].forEach((b) => { if (b) b.disabled = false; });
+  }
 }
 
 function updateAudioButton() {
@@ -289,10 +362,9 @@ function collectProfileFromForm(form) {
     house: form.house.value,
     year: Number(form.year.value),
     bloodStatus: form.bloodStatus.value,
-    appearance: form.appearance.value.trim() || applyRandomAppearanceToForm(form),
+    appearance: form.appearance.value.trim() || applyComposedAppearanceToForm(form),
     talents: collectTalents(form),
     custom: form.custom.value,
-    target: form.target.value,
     tone: form.tone.value,
     saveCedric: form.saveCedric?.checked ?? false,
     wand: getPendingWand(),
@@ -353,7 +425,7 @@ function buildStartMessage(profile) {
     if (p.wand.affinity) msg += `魔杖相性：${p.wand.affinity}\n`;
   }
   if (p.custom) msg += `自定义：${p.custom}\n`;
-  msg += `首要想攻略：${p.target}\n氛围偏好：${p.tone}\n`;
+  msg += `日常叙事基调：${p.tone}\n`;
   if (p.saveCedric) msg += `玩家希望在三强赛中拯救塞德里克。\n`;
   const hook = getPlaythroughHook(p.year);
   msg += `本局原著主线：${hook.label}（${hook.hint}）。须与哈利·波特同期事件对齐，哈利为剧情核心，玩家为参与者。\n`;
@@ -397,12 +469,14 @@ export function bindNewGameControl() {
     if (confirm('开始新游戏？未保存的进度将丢失。')) {
       resetSession();
       renderWandPreview(document.getElementById('wand-preview'), null);
+      const appearanceField = document.getElementById('player-appearance');
+      if (appearanceField) appearanceField.value = '';
+      clearAppearanceTraitInputs(document.getElementById('character-form'));
+      updateAppearanceTraitSummary();
       const startBtn = document.getElementById('start-game-btn');
       if (startBtn) startBtn.disabled = true;
-      closeCareerSelectionModal();
       clearSceneVisual();
       showScreen('create-screen');
-      applyRandomAppearanceToForm();
     }
   });
 }

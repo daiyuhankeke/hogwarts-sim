@@ -10,7 +10,7 @@
   <header class="app-header">
     <div>
       <h1>霍格沃茨日常模拟器</h1>
-      <div class="subtitle">三分甜 · 七分现实 · 无 BE</div>
+      <div class="subtitle">霍格沃茨日常</div>
     </div>
     <div class="player-info" id="header-player-info" hidden>
       <span id="player-name"></span> · <span id="player-house"></span>
@@ -107,11 +107,22 @@
           </div>
           <div class="full-width appearance-section">
             <span class="field-label">外貌特征</span>
+            <p class="hint appearance-intro">先选标签定下基调，再组合或 AI 润色；下方全文可随时修改。</p>
+            <div id="appearance-trait-groups" class="appearance-trait-groups"></div>
+            <label class="appearance-notes-label">
+              自拟细节（可选）
+              <input name="appearanceNotes" placeholder="例：左眉有一道细疤 / 总戴祖母的珊瑚胸针" maxlength="80">
+            </label>
+            <p id="appearance-trait-summary" class="hint">已选：无（组合时将随机补全）</p>
             <div class="appearance-row">
-              <textarea name="appearance" id="player-appearance" rows="2" placeholder="点击下方随机生成，或自行填写" maxlength="120"></textarea>
-              <button type="button" id="appearance-random-btn" class="btn btn-secondary btn-small">随机外貌</button>
+              <textarea name="appearance" id="player-appearance" rows="4" placeholder="可完全手写，或用标签 + 按钮生成" maxlength="400"></textarea>
             </div>
-            <p class="hint">首次进入会自动生成；可多次随机直到满意，也可手动修改。</p>
+            <div class="appearance-actions">
+              <button type="button" id="appearance-compose-btn" class="btn btn-secondary btn-small">根据标签组合</button>
+              <button type="button" id="appearance-ai-btn" class="btn btn-secondary btn-small">AI 撰写描写</button>
+              <button type="button" id="appearance-refine-btn" class="btn btn-secondary btn-small">AI 润色现有文本</button>
+            </div>
+            <p id="appearance-status" class="hint">不选标签也可以：直接写文本框，或点「根据标签组合」随机生成。</p>
           </div>
           <div class="full-width talent-section">
             <span class="field-label">特殊才能（可多选，也可自拟）</span>
@@ -135,12 +146,7 @@
             </div>
             <p id="wand-status" class="hint"></p>
           </div>
-          <label>首要想攻略谁
-            <select name="target" id="target-select">
-              <option value="先不选">先不选</option>
-            </select>
-          </label>
-          <label>初始氛围偏好
+          <label>日常叙事基调
             <select name="tone">
               <option value="偏甜">偏甜</option>
               <option value="偏日常" selected>偏日常</option>
@@ -196,10 +202,6 @@
         </div>
         <aside>
           <div class="card">
-            <h2>毕业后</h2>
-            <div id="career-panel"><p class="hint">等待开始……</p></div>
-          </div>
-          <div class="card">
             <h2>家庭</h2>
             <div id="family-panel"><p class="hint">等待开始……</p></div>
           </div>
@@ -216,8 +218,8 @@
             <div id="magic-panel"><p class="hint">等待开始……</p></div>
           </div>
           <div class="card">
-            <h2>好感一览</h2>
-            <div id="relationships-panel"><p class="hint">尚未建立关系</p></div>
+            <h2>人物关系</h2>
+            <div id="relationships-panel"><p class="hint">尚未与同学建立熟识关系</p></div>
             <div id="event-hints"></div>
           </div>
         </aside>
@@ -230,16 +232,6 @@
     <div class="loader-box">
       <div class="spinner"></div>
       <p>猫头鹰正在传递消息……</p>
-    </div>
-  </div>
-
-  <div id="career-modal" class="career-modal" hidden>
-    <div class="career-modal-backdrop"></div>
-    <div class="career-modal-box card">
-      <h2>🎓 毕业典礼 · 选择你的道路</h2>
-      <p class="hint">共 29 个方向，按魔法部 / 体制外分组。灰色为 O.W.L. 未达标；社团经历可作软提示参考。</p>
-      <div id="career-choices" class="career-choices"></div>
-      <button type="button" id="career-modal-close" class="btn btn-secondary btn-small">稍后再选</button>
     </div>
   </div>
 

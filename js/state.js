@@ -9,7 +9,6 @@ import { createFallbackWand } from './wand-system.js';
 import { createInitialProgression, migrateProgression, mergeProgressionUpdate, processAfterTurn } from './progression.js';
 import { createTimetable, migrateTimetable, mergeTimetableUpdate } from './timetable.js';
 import { migrateCanonPlot, mergeCanonPlotUpdate } from './canonical-storyline.js';
-import { createInitialCareer, migrateCareer } from './career-system.js';
 
 const STORAGE_KEY = 'hogwarts-sim-save';
 const SLOT_PREFIX = 'hogwarts-sim-slot-';
@@ -68,6 +67,7 @@ export function normalizeLoadedState(state) {
   if (state.profile?.target === '双子夹心') {
     state.profile.target = '先不选';
   }
+  state.currentTarget = null;
 
   if (state.relationships) state.relationships = migrateRelationships(state.relationships);
   if (state.profile?.year) {
@@ -87,7 +87,8 @@ export function normalizeLoadedState(state) {
   if (state.profile && !state.profile.family?.summary) {
     state.profile = normalizeProfile(state.profile);
   }
-  state.career = migrateCareer(state);
+  delete state.career;
+  if (state.flags?.graduated !== undefined) delete state.flags.graduated;
 
   const lastHist = state.history?.[state.history.length - 1];
   if (!state.lastNarrative && lastHist?.narrative) {
@@ -109,7 +110,7 @@ export function createInitialState(rawProfile) {
     time: { week: 1, weekday: year === 1 ? '周日' : '周一', season: '秋' },
     scene: { location: year === 1 ? '国王十字车站' : '霍格沃茨城堡', weather: '阴' },
     player: {},
-    currentTarget: profile.target === '先不选' ? null : profile.target,
+    currentTarget: null,
     relationships: createInitialRelationships(),
     npcYears: computeNpcYears(year),
     flags: {
@@ -133,7 +134,6 @@ export function createInitialState(rawProfile) {
     magic: createInitialMagic(profile),
     progression: createInitialProgression(profile),
     timetable: createTimetable(profile),
-    career: createInitialCareer(),
   };
 }
 
@@ -144,7 +144,6 @@ export function mergeStateUpdate(state, update) {
 
   if (update.time) next.time = { ...next.time, ...update.time };
   if (update.scene) next.scene = { ...next.scene, ...update.scene };
-  if (update.currentTarget !== undefined) next.currentTarget = update.currentTarget;
   if (update.summary) next.summary = update.summary;
 
   if (update.relationships) {
@@ -160,18 +159,21 @@ export function mergeStateUpdate(state, update) {
   }
 
   if (update.flags) {
-    next.flags = { ...next.flags, ...update.flags };
+    const { canonPlot: canonPlotUpdate, ...restFlags } = update.flags;
+    next.flags = { ...next.flags, ...restFlags };
     if (update.flags.eventsTriggered) {
       next.flags.eventsTriggered = [
         ...new Set([...(next.flags.eventsTriggered || []), ...update.flags.eventsTriggered]),
       ];
     }
-    if (update.flags.canonPlot) {
+    if (canonPlotUpdate) {
       next.flags.canonPlot = mergeCanonPlotUpdate(
         next.flags.canonPlot || migrateCanonPlot(next),
-        update.flags.canonPlot
+        canonPlotUpdate,
+        next.profile?.year ?? 1
       );
     }
+    next.flags.canonPlot = migrateCanonPlot(next);
   }
 
   if (update.magic) {
@@ -184,13 +186,6 @@ export function mergeStateUpdate(state, update) {
 
   if (update.timetable) {
     next.timetable = mergeTimetableUpdate(next.timetable || migrateTimetable(next), update.timetable);
-  }
-
-  if (update.career) {
-    next.career = { ...(next.career || migrateCareer(next)), ...update.career };
-    if (update.career.chosenId) {
-      next.flags = { ...next.flags, graduated: true };
-    }
   }
 
   return next;

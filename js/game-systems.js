@@ -1,10 +1,9 @@
-import { getStageFromAffection, ROMANCE_TARGETS } from './state.js';
+import { getStageFromAffection } from './state.js';
 import { getNpcScheduleContext } from './npc-schedules.js';
 import { getPlaythroughHook, getClubNames, getGossipLabel, getClubAvailabilityContext } from './progression.js';
 import { getTimetableContext } from './timetable.js';
 import { getCanonicalPlotContext, getCanonEventsForCalendar } from './canonical-storyline.js';
 import { getFamilyInteractionContext } from './family-interactions.js';
-import { getCareerContext } from './career-system.js';
 
 function isAtHogwarts(state) {
   const loc = state?.scene?.location ?? '';
@@ -55,24 +54,7 @@ export function getUpcomingEvents(state) {
   return [...canon, ...generic].sort((a, b) => a.week - b.week);
 }
 
-export function checkEnding(state) {
-  const rel = state.relationships;
-  const allAffections = ROMANCE_TARGETS.map((n) => rel[n]?.affection ?? 0);
-
-  if (allAffections.every((a) => a >= 85)) {
-    return { type: 'HE_万人迷', label: '万人迷结局已解锁' };
-  }
-
-  for (const name of ROMANCE_TARGETS) {
-    const r = rel[name];
-    if (r && r.affection >= 91 && r.stage === '热恋') {
-      return { type: 'HE_公开', label: `与${name}的热恋 HE 可触发`, target: name };
-    }
-    if (r && r.affection >= 76 && r.stage === '确认关系') {
-      return { type: 'HE_隐秘', label: `与${name}的隐秘恋爱进行中`, target: name };
-    }
-  }
-
+export function checkEnding() {
   return null;
 }
 
@@ -110,7 +92,6 @@ export function canBeTriwizardChampion(state) {
 
 export function buildEventContext(state) {
   const upcoming = getUpcomingEvents(state);
-  const ending = checkEnding(state);
   const hook = getPlaythroughHook(state.profile?.year ?? 1);
   const npcSchedule = getNpcScheduleContext(state);
   const prog = state.progression;
@@ -121,7 +102,6 @@ export function buildEventContext(state) {
 
   return {
     upcomingEvents: upcoming.map((e) => e.label),
-    endingHint: ending?.label ?? null,
     hogsmeadeAvailable: canVisitHogsmeade(state),
     triwizardEligible: canBeTriwizardChampion(state),
     playthroughHook: hook,
@@ -147,10 +127,9 @@ export function buildEventContext(state) {
         }
       : null,
     familyInteraction,
-    career: getCareerContext(state),
     sceneOptionHint: getSceneOptionHint(state, lastNarrative),
     atHogwarts: isAtHogwarts(state),
-    dmReminder: '每 5 回合须推进至少一项：学业/感情/学院事件/魔法/社团/原著主线/家庭线。大事件准备期请给准备阶段选项。主线须对齐 canonPlot。options 必须与本回合 narrative 末尾场景一致，见 sceneOptionHint。'
+    dmReminder: '每 5 回合须推进至少一项：学业/学院事件/魔法/社团/原著主线/家庭线。大事件准备期请给准备阶段选项。主线须对齐 canonPlot。options 必须与本回合 narrative 末尾场景一致，见 sceneOptionHint。本作为霍格沃茨日常模拟，勿主动推进恋爱线或特殊恋爱结局。'
       + (familyInteraction.familyPrompt ? ` ${familyInteraction.familyPrompt}` : ''),
   };
 }

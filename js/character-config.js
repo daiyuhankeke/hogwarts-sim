@@ -1,51 +1,13 @@
 /** 角色创建默认值与可选项 */
 
 import { normalizeFamily } from './family-background.js';
+import {
+  composeAppearanceFromTraits,
+  collectAppearanceTraits,
+} from './appearance-config.js';
 
 export const DEFAULT_NAME = '艾拉·格林';
 export const DEFAULT_APPEARANCE = '深棕卷发，琥珀色眼睛，气质安静';
-
-const PLAYER_HAIR = [
-  '深棕卷发', '乌黑直发及肩', '亚麻色微卷长发', '栗色齐刘海短发', '深红发编成松散侧辫',
-  '浅金波浪长发', '墨黑高马尾', '深褐及腰直发', '红棕挑染短发', '银灰挑染的黑发',
-];
-
-const PLAYER_EYES = [
-  '琥珀色眼睛', '深褐眼睛', '灰绿眼睛', '榛色眼睛', '蓝灰眼睛', '深绿眼睛', '浅褐眼睛',
-];
-
-const PLAYER_FEATURES = [
-  '肤白', '小麦肤色', '肤色偏暖', '脸颊有淡淡雀斑', '鼻梁小巧', '眉形清晰',
-  '唇色自然偏淡', '下颌线柔和', '身形纤细', '身形匀称', '比同龄人略高',
-];
-
-const PLAYER_VIBES = [
-  '气质安静', '眉眼英气', '笑容爽朗', '举止克制', '神情专注', '自带书卷气',
-  '看起来不太好惹', '温和但不易亲近', '眼神明亮', '总像在思考什么',
-];
-
-const PLAYER_DETAILS = [
-  '', '', '',
-  '左手腕有小疤', '右耳戴一只旧式银饰', '常把魔杖别在袖口', '指甲修得整齐',
-  '说话时习惯微微偏头', '走路步子很轻', '笑时会先抿一下唇',
-];
-
-function pickRandom(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-/** 随机生成主角（女巫）外貌描述 */
-export function generateRandomAppearance() {
-  const parts = [
-    pickRandom(PLAYER_HAIR),
-    pickRandom(PLAYER_EYES),
-    pickRandom(PLAYER_FEATURES),
-    pickRandom(PLAYER_VIBES),
-  ];
-  const detail = pickRandom(PLAYER_DETAILS);
-  if (detail) parts.push(detail);
-  return parts.filter(Boolean).join('，');
-}
 
 export function fitAppearanceField(field = document.getElementById('player-appearance')) {
   if (!field || field.tagName !== 'TEXTAREA') return;
@@ -53,13 +15,33 @@ export function fitAppearanceField(field = document.getElementById('player-appea
   field.style.height = `${Math.max(field.scrollHeight, 44)}px`;
 }
 
-export function applyRandomAppearanceToForm(form = document.getElementById('character-form')) {
+export function applyComposedAppearanceToForm(form = document.getElementById('character-form'), { fillRandom = true } = {}) {
   const input = form?.appearance ?? form?.elements?.appearance;
   if (!input) return '';
-  const text = generateRandomAppearance();
+  const traits = collectAppearanceTraits(form);
+  const profile = {
+    house: form.house?.value,
+    year: Number(form.year?.value || 1),
+  };
+  const text = composeAppearanceFromTraits(traits, profile, { fillRandom });
   input.value = text;
   fitAppearanceField(input);
   return text;
+}
+
+/** @deprecated 使用 applyComposedAppearanceToForm */
+export function applyRandomAppearanceToForm(form) {
+  return applyComposedAppearanceToForm(form, { fillRandom: true });
+}
+
+/** @deprecated 使用 composeAppearanceFromTraits */
+export function generateDetailedFallbackAppearance(profile = {}) {
+  return composeAppearanceFromTraits({}, profile, { fillRandom: true });
+}
+
+/** @deprecated */
+export function generateRandomAppearance(profile = {}) {
+  return generateDetailedFallbackAppearance(profile);
 }
 
 export const TALENT_PRESETS = [
@@ -79,7 +61,7 @@ export const TALENT_PRESETS = [
   '傲罗家族背景',
 ];
 
-/** 与玩家年级差；null 表示非年级制（教授/校外） */
+/** 同校 NPC 年级差；null 表示非年级制（教授/校外） */
 export const YEAR_OFFSETS = {
   '哈利': 0,
   '德拉科': 0,
@@ -101,30 +83,6 @@ export const YEAR_OFFSETS = {
 };
 
 export const ROMANCE_TARGETS = Object.keys(YEAR_OFFSETS);
-
-/** 攻略对象下拉分组 */
-export const TARGET_GROUPS = [
-  {
-    label: '同年级',
-    options: ['哈利', '德拉科', '西奥多', '布雷斯', '罗恩', '纳威', '赫敏'],
-  },
-  {
-    label: '学妹（低一年级）',
-    options: ['金妮', '卢娜'],
-  },
-  {
-    label: '学长',
-    options: ['弗雷德', '乔治', '塞德里克', '奥利弗·伍德'],
-  },
-  {
-    label: '教授 / 校外',
-    options: ['斯内普', '卢平', '小天狼星', '威克多尔·克鲁姆'],
-  },
-  {
-    label: '暂不选定',
-    options: ['先不选'],
-  },
-];
 
 export function computeNpcYears(playerYear) {
   const years = {};
@@ -161,7 +119,7 @@ export function normalizeProfile(raw) {
   if (!surname && name.includes('·')) {
     surname = name.split('·').pop();
   }
-  const appearance = (raw.appearance || '').trim() || generateRandomAppearance();
+  const appearance = (raw.appearance || '').trim() || composeAppearanceFromTraits({}, raw, { fillRandom: true });
   const talents = Array.isArray(raw.talents)
     ? raw.talents.filter(Boolean)
     : (raw.talent || '').split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
@@ -181,7 +139,7 @@ export function normalizeProfile(raw) {
     appearance,
     talents,
     custom: (raw.custom || '').trim(),
-    target: raw.target,
+    target: '先不选',
     tone: raw.tone,
     saveCedric: raw.saveCedric === true,
     wand: raw.wand || null,

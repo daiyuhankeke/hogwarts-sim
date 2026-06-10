@@ -734,158 +734,6 @@ textarea {
   color: #666;
 }
 
-/* 职业系统 */
-.career-prep-banner,
-.career-chosen-banner {
-  padding: 0.45rem 0.65rem;
-  border-radius: 4px;
-  font-weight: bold;
-  margin-bottom: 0.5rem;
-  background: rgba(116, 0, 1, 0.1);
-  border-left: 3px solid var(--house-accent);
-  color: var(--house-primary);
-}
-
-.career-prep-banner.career-ready {
-  background: rgba(211, 166, 37, 0.2);
-  animation: gain-pop 0.35s ease;
-}
-
-.career-tagline {
-  font-style: italic;
-  color: #555;
-  margin: 0.35rem 0 0.5rem;
-  font-size: 0.92rem;
-}
-
-.career-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
-  font-size: 0.85rem;
-  margin-bottom: 0.35rem;
-}
-
-.career-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
-.career-modal[hidden] {
-  display: none !important;
-}
-
-.career-modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(20, 12, 8, 0.65);
-}
-
-.career-group-title {
-  margin: 0.75rem 0 0.35rem;
-  font-size: 0.95rem;
-  color: var(--house-primary);
-  border-bottom: 1px solid rgba(116, 0, 1, 0.2);
-  padding-bottom: 0.25rem;
-}
-
-.career-group-title:first-child {
-  margin-top: 0;
-}
-
-.career-modal-box {
-  position: relative;
-  z-index: 1;
-  max-width: 720px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  margin: 0;
-}
-
-.career-modal-box h2 {
-  margin-top: 0;
-}
-
-.career-choices {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  margin: 1rem 0;
-}
-
-.career-card {
-  padding: 0.75rem 0.85rem;
-  border: 1px solid rgba(116, 0, 1, 0.25);
-  border-radius: 6px;
-  background: rgba(255, 254, 248, 0.95);
-}
-
-.career-card-locked {
-  opacity: 0.72;
-  background: #f5f0e8;
-}
-
-.career-card-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem;
-  margin-bottom: 0.35rem;
-}
-
-.career-card-head strong {
-  color: var(--house-primary);
-  font-size: 1.05rem;
-}
-
-.career-card-tag {
-  font-size: 0.8rem;
-  color: #666;
-}
-
-.career-card-desc {
-  margin: 0 0 0.45rem;
-  font-size: 0.92rem;
-}
-
-.career-card-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem 0.65rem;
-  font-size: 0.8rem;
-  color: #444;
-  margin-bottom: 0.35rem;
-}
-
-.career-req {
-  font-size: 0.82rem;
-  color: #555;
-  margin: 0.25rem 0;
-}
-
-.career-block {
-  font-size: 0.82rem;
-  color: #8b0000;
-  margin: 0.25rem 0;
-}
-
-.career-soft {
-  font-size: 0.8rem;
-  color: #666;
-  font-style: italic;
-  margin: 0.2rem 0;
-}
-
-.career-select-btn {
-  margin-top: 0.5rem;
-}
-
 @keyframes gain-pop {
   from { transform: translateY(-6px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
@@ -974,6 +822,57 @@ textarea {
   border-radius: 6px;
 }
 
+.appearance-intro {
+  margin: 0 0 0.65rem;
+}
+
+.appearance-trait-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-bottom: 0.65rem;
+}
+
+.appearance-trait-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.appearance-trait-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.appearance-trait-grid {
+  margin: 0;
+}
+
+.appearance-notes-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.45rem;
+  font-size: 0.88rem;
+}
+
+.appearance-notes-label input {
+  width: 100%;
+}
+
+.appearance-trait-custom {
+  width: 100%;
+  margin-top: 0.35rem;
+  font-size: 0.88rem;
+}
+
+.appearance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+}
+
 .appearance-row {
   display: flex;
   gap: 0.5rem;
@@ -983,15 +882,9 @@ textarea {
 .appearance-row textarea {
   flex: 1;
   min-width: 0;
-  min-height: 2.75rem;
-  resize: none;
-  overflow: hidden;
+  min-height: 5.5rem;
+  resize: vertical;
   line-height: 1.45;
-}
-
-.appearance-row .btn-small {
-  flex-shrink: 0;
-  white-space: nowrap;
 }
 
 .talent-grid {

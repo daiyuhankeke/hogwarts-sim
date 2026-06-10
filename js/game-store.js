@@ -4,7 +4,6 @@ let gameState = null;
 let currentSlot = 0;
 let lastResponse = null;
 let pendingWand = null;
-let careerModalDismissed = false;
 
 export function getGameState() {
   return gameState;
@@ -45,17 +44,8 @@ export function setPendingWand(wand) {
   pendingWand = wand;
 }
 
-export function isCareerModalDismissed() {
-  return careerModalDismissed;
-}
-
-export function setCareerModalDismissed(value) {
-  careerModalDismissed = value;
-}
-
 export function resetSession() {
   gameState = null;
   lastResponse = null;
   pendingWand = null;
-  careerModalDismissed = false;
 }

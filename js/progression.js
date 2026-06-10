@@ -47,7 +47,6 @@ export const ACHIEVEMENTS = [
   { id: 'club_active', name: '社团达人', desc: '参加 3 次以上社团活动' },
   { id: 'gossip_peak', name: '话题人物', desc: '流言等级达到最高' },
   { id: 'he_any', name: '幸福结局', desc: '达成任意 HE' },
-  { id: 'career_chosen', name: '职场新人', desc: '毕业后选定职业' },
 ];
 
 export const WAND_AFFINITY_HINTS = {
@@ -81,7 +80,7 @@ export function getPlaythroughHook(year) {
     6: { id: 'canon_y6', label: '混血王子之年', hint: '魂器线索、魔药笔记、天文塔' },
     7: { id: 'canon_y7', label: '死亡圣器之年', hint: '卡罗统治、霍格沃茨大战' },
   };
-  return hooks[year] || { id: 'daily', label: '霍格沃茨日常', hint: '学业、恋爱与学院生活' };
+  return hooks[year] || { id: 'daily', label: '霍格沃茨日常', hint: '学业、社团与学院生活' };
 }
 
 export function createInitialProgression(profile) {
