@@ -9,9 +9,11 @@
       "required": ["name", "house", "year", "bloodStatus", "appearance", "target", "tone"],
       "properties": {
         "name": { "type": "string" },
-        "house": { "enum": ["格兰芬多", "斯莱特林", "拉文克劳", "赫奇帕奇"] },
+        "house": { "type": ["string", "null"], "enum": ["格兰芬多", "斯莱特林", "拉文克劳", "赫奇帕奇", null] },
         "year": { "type": "integer", "minimum": 1, "maximum": 7 },
         "bloodStatus": { "enum": ["纯血", "混血", "麻瓜出身"] },
+        "originBackground": { "enum": ["ancient", "ordinary", "muggle"] },
+        "storyPath": { "enum": ["everyday", "legend"] },
         "appearance": { "type": "string" },
         "talent": { "type": "string" },
         "talents": { "type": "array", "items": { "type": "string" } },

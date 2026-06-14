@@ -1025,6 +1025,371 @@ textarea {
   overflow-y: auto;
 }
 
+.lore-panel,
+.origin-section,
+.story-path-section {
+  padding: 0.65rem 0.75rem;
+  background: rgba(255, 254, 248, 0.55);
+  border: 1px dashed #c4a35a;
+  border-radius: 6px;
+}
+
+.lore-flavor {
+  margin: 0.35rem 0 0;
+  line-height: 1.55;
+  font-size: 0.88rem;
+}
+
+.lore-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.lore-choice-card {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.85rem 1rem;
+  background: #fffef8;
+  border: 2px solid #d4c4a0;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s, transform 0.12s;
+  user-select: none;
+}
+
+.lore-choice-card:hover {
+  border-color: #b8860b;
+  background: #fff8e8;
+  box-shadow: 0 2px 8px rgba(184, 134, 11, 0.12);
+}
+
+.lore-choice-card:active {
+  transform: scale(0.99);
+}
+
+.lore-choice-card input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lore-choice-indicator {
+  flex-shrink: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-top: 0.1rem;
+  border: 2px solid #b8860b;
+  border-radius: 50%;
+  background: #fffef8;
+  box-shadow: inset 0 1px 2px rgba(44, 24, 16, 0.08);
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+}
+
+.lore-choice-card:has(input:checked) {
+  border-color: var(--house-accent);
+  background: linear-gradient(135deg, #fff8e8 0%, #fff3d6 100%);
+  box-shadow:
+    0 0 0 1px rgba(184, 134, 11, 0.25),
+    0 4px 12px rgba(116, 0, 1, 0.08);
+}
+
+.lore-choice-card:has(input:checked) .lore-choice-indicator {
+  border-color: var(--house-primary);
+  background: var(--house-primary);
+  box-shadow: inset 0 0 0 3px #fffef8;
+}
+
+.lore-choice-card:has(input:focus-visible) {
+  outline: 2px solid var(--house-accent);
+  outline-offset: 2px;
+}
+
+.lore-choice-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.lore-choice-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  line-height: 1.35;
+}
+
+.lore-choice-tagline {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.lore-choice-card:has(input:checked) .lore-choice-title {
+  color: var(--house-primary);
+}
+
+.story-path-section .lore-choice-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 560px) {
+  .story-path-section .lore-choice-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.acceptance-letter-section {
+  margin-top: 0.25rem;
+}
+
+.acceptance-letter-frame {
+  margin-top: 0.65rem;
+  padding: 0.35rem;
+  background: linear-gradient(165deg, #3d2817 0%, #1a1208 100%);
+  border-radius: 10px;
+  box-shadow:
+    0 8px 24px rgba(26, 18, 8, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.acceptance-letter-parchment {
+  position: relative;
+  padding: 2rem 2.1rem 1.85rem;
+  background-color: #f0dfbc;
+  background-image:
+    radial-gradient(ellipse 120% 80% at 15% 10%, rgba(255, 248, 220, 0.55), transparent 55%),
+    radial-gradient(ellipse 90% 70% at 85% 90%, rgba(139, 90, 43, 0.12), transparent 50%),
+    radial-gradient(circle at 30% 70%, rgba(101, 67, 33, 0.08), transparent 40%),
+    linear-gradient(175deg, #f7edd4 0%, #ecd9b4 38%, #e2cfa3 72%, #d9c496 100%);
+  border: 1px solid rgba(139, 90, 43, 0.35);
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 40px rgba(139, 90, 43, 0.08),
+    inset 0 0 0 1px rgba(255, 250, 235, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.25);
+  color: #3a2510;
+  font-family: 'Georgia', 'Noto Serif SC', 'Source Han Serif SC', serif;
+  font-size: 0.92rem;
+  line-height: 1.75;
+  transform: rotate(-0.35deg);
+  overflow: hidden;
+}
+
+.acceptance-letter-parchment::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 27px,
+      rgba(139, 90, 43, 0.04) 27px,
+      rgba(139, 90, 43, 0.04) 28px
+    );
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.acceptance-letter-parchment::after {
+  content: '';
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(184, 134, 11, 0.22);
+  pointer-events: none;
+}
+
+.acceptance-letter-wax {
+  position: absolute;
+  top: 1.1rem;
+  right: 1.25rem;
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 30%, #c94a4a, #8b1a1a 55%, #5c0f0f 100%);
+  box-shadow:
+    inset 0 2px 4px rgba(255, 200, 200, 0.25),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.35),
+    0 3px 8px rgba(92, 15, 15, 0.45);
+  opacity: 0.92;
+}
+
+.acceptance-letter-wax::after {
+  content: 'H';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Georgia', serif;
+  font-size: 1.35rem;
+  font-weight: bold;
+  color: rgba(255, 220, 180, 0.85);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.acceptance-letter-head {
+  position: relative;
+  text-align: center;
+  margin-bottom: 0.85rem;
+  padding-right: 2.5rem;
+}
+
+.acceptance-letter-crest {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  margin-bottom: 0.45rem;
+  border: 2px solid #8b6914;
+  border-radius: 50%;
+  font-family: 'Georgia', serif;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: #6b4a0a;
+  background: radial-gradient(circle at 40% 35%, #fff8e8, #e8d4a8);
+  box-shadow: 0 2px 6px rgba(107, 74, 10, 0.2);
+}
+
+.acceptance-letter-school {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #5c3d1e;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.acceptance-letter-locale {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: #7a5c3a;
+  font-style: italic;
+}
+
+.acceptance-letter-locale-sub {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: #6b4a2a;
+}
+
+.acceptance-letter-divider {
+  height: 1px;
+  margin: 0.75rem 0 1rem;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(184, 134, 11, 0.55) 20%,
+    rgba(184, 134, 11, 0.55) 80%,
+    transparent
+  );
+}
+
+.acceptance-letter-headmaster {
+  margin: 0 0 0.15rem;
+  font-weight: 600;
+  color: #4a3018;
+}
+
+.acceptance-letter-titles {
+  margin: 0 0 1.1rem;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: #6b5238;
+}
+
+.acceptance-letter-salute {
+  margin: 0 0 0.85rem;
+  font-size: 1rem;
+}
+
+.acceptance-letter-salute em {
+  font-style: normal;
+  font-weight: 700;
+  color: #5c3010;
+  border-bottom: 1px solid rgba(184, 134, 11, 0.45);
+  padding-bottom: 0.05rem;
+}
+
+.acceptance-letter-body {
+  margin: 0 0 0.75rem;
+  text-indent: 2em;
+  color: #3a2510;
+}
+
+.acceptance-letter-body strong {
+  color: #5c3010;
+  font-weight: 700;
+}
+
+.acceptance-letter-sign {
+  margin-top: 1.35rem;
+  padding-top: 0.5rem;
+}
+
+.acceptance-letter-closing {
+  margin: 0 0 0.65rem;
+  color: #4a3018;
+}
+
+.acceptance-letter-signature {
+  margin: 0;
+  font-family: 'Georgia', 'Noto Serif SC', serif;
+  font-size: 1.15rem;
+  font-style: italic;
+  font-weight: 600;
+  color: #3d2510;
+  letter-spacing: 0.06em;
+}
+
+.acceptance-letter-sign-title {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: #6b5238;
+}
+
+@media (max-width: 560px) {
+  .acceptance-letter-parchment {
+    padding: 1.5rem 1.25rem 1.35rem;
+    font-size: 0.86rem;
+  }
+
+  .acceptance-letter-head {
+    padding-right: 0;
+  }
+
+  .acceptance-letter-wax {
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+
+  .acceptance-letter-school {
+    font-size: 1.15rem;
+  }
+}
+
+.prog-path {
+  margin: 0.15rem 0 0.35rem;
+}
+
 /* 侧栏家庭卡片 */
 .family-header {
   display: flex;

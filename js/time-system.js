@@ -1,6 +1,7 @@
 /** 霍格沃茨一日时钟 — 行动消耗时间，跨日推进 weekday/week */
 
 import { WEEKDAYS } from './timetable.js';
+import { migrateGameWeek, WEEKS_PER_YEAR } from './calendar-config.js';
 
 export const CURFEW_CLOCK = '21:00';
 const DAY_MINUTES = 24 * 60;
@@ -99,6 +100,7 @@ export function migrateTime(state) {
     time.clock = formatClock(parseClock(time.clock));
   }
   if (!time.week) time.week = 1;
+  else time.week = migrateGameWeek(time.week);
   if (!time.weekday) time.weekday = '周一';
   if (!time.season) time.season = '秋';
   return time;
@@ -158,8 +160,9 @@ export function getTimeContext(state) {
     dayPhase: phase,
     afterCurfew,
     curfew: CURFEW_CLOCK,
+    weeksPerYear: WEEKS_PER_YEAR,
     dmHint:
-      `当前 ${time.clock}（${phase}）` +
+      `当前 ${time.clock}（${phase}）；第 ${time.week}/${WEEKS_PER_YEAR} 周` +
       (afterCurfew ? '；已过宵禁 21:00，校外游荡可能扣学院分' : '') +
       '。每回合行动消耗约 30–120 分钟，须在 stateUpdate.time.clock 中体现结束时刻。',
   };

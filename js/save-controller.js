@@ -46,7 +46,7 @@ export function loadGameFromSlot(slot) {
 
   setGameState(loaded);
   setCurrentSlot(slot);
-  applyHouseTheme(loaded.profile.house);
+  applyHouseTheme(loaded.profile?.house || null);
   showScreen('game-screen');
   renderGameUI(loaded);
 

@@ -1,5 +1,6 @@
 import { createInitialFamilyTrack, migrateFamilyTrack, processFamilyAfterTurn } from './family-interactions.js';
 import { isExtremePurebloodFamily } from './family-background.js';
+import { scaleWeek, WEEKS_PER_YEAR, OWL_EXAM_START_WEEK } from './calendar-config.js';
 
 /** 社团、学院分、成就、回忆、里程碑、舆论、大事件准备、考试、守护神、魔杖相性 */
 
@@ -65,9 +66,9 @@ export const WAND_AFFINITY_HINTS = {
 
 const PREP_EVENTS = [
   { id: 'hogsmeade', label: '霍格莫德', weeksBefore: 2, minYear: 3 },
-  { id: 'yule_ball', label: '圣诞舞会', weeksBefore: 3, minYear: 4, targetWeek: 14 },
+  { id: 'yule_ball', label: '圣诞舞会', weeksBefore: 3, minYear: 4, targetWeek: scaleWeek(14) },
   { id: 'triwizard', label: '三强争霸赛', weeksBefore: 4, minYear: 4, requiresFlag: 'triwizardYear' },
-  { id: 'owl', label: 'O.W.L. 考试', weeksBefore: 3, minYear: 5, targetWeek: 33 },
+  { id: 'owl', label: 'O.W.L. 考试', weeksBefore: 3, minYear: 5, targetWeek: WEEKS_PER_YEAR },
 ];
 
 export function getPlaythroughHook(year) {
@@ -256,9 +257,9 @@ export function refreshExamState(state) {
   const prog = structuredClone(state.progression || createInitialProgression(state.profile));
   const week = state.time?.week ?? 1;
   const year = state.profile?.year ?? 1;
-  if (year === 5 && week >= 30 && week <= 34) {
+  if (year === 5 && week >= OWL_EXAM_START_WEEK && week <= WEEKS_PER_YEAR) {
     prog.exams = { ...prog.exams, active: true, type: 'owl', weekStarted: prog.exams.weekStarted ?? week };
-  } else if (week > 34) {
+  } else if (week > WEEKS_PER_YEAR) {
     prog.exams = { ...prog.exams, active: false };
   }
   return prog;

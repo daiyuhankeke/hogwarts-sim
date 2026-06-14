@@ -5,9 +5,20 @@ import {
   composeAppearanceFromTraits,
   collectAppearanceTraits,
 } from './appearance-config.js';
+import { resolveDefaultOrigin } from './character-lore.js';
 
 export const DEFAULT_NAME = '艾拉·格林';
 export const DEFAULT_APPEARANCE = '深棕卷发，琥珀色眼睛，气质安静';
+
+export const HOUSES = ['格兰芬多', '斯莱特林', '拉文克劳', '赫奇帕奇'];
+
+export function isHousePending(profile) {
+  return (profile?.year ?? 1) === 1 && !profile?.house;
+}
+
+export function formatHouseLabel(profile) {
+  return profile?.house || '待分院';
+}
 
 export function fitAppearanceField(field = document.getElementById('player-appearance')) {
   if (!field || field.tagName !== 'TEXTAREA') return;
@@ -125,17 +136,26 @@ export function normalizeProfile(raw) {
     : (raw.talent || '').split(/[,，、]/).map((s) => s.trim()).filter(Boolean);
 
   const bloodStatus = raw.bloodStatus;
+  const originBackground = raw.originBackground || raw.family?.originBackground || resolveDefaultOrigin(bloodStatus);
+  const storyPath = raw.storyPath === 'legend' ? 'legend' : 'everyday';
   const family = raw.family?.summary
-    ? raw.family
-    : normalizeFamily(raw.family, { name, house: raw.house, bloodStatus });
+    ? { ...raw.family, originBackground: raw.family.originBackground || originBackground }
+    : normalizeFamily({ ...raw.family, originBackground }, { name, house: raw.house, bloodStatus });
+
+  const year = Number(raw.year);
+  const house = year === 1
+    ? (raw.house && HOUSES.includes(raw.house) ? raw.house : null)
+    : (raw.house && HOUSES.includes(raw.house) ? raw.house : '格兰芬多');
 
   return {
     name,
     givenName,
     surname,
-    house: raw.house,
-    year: Number(raw.year),
+    house,
+    year,
     bloodStatus,
+    originBackground,
+    storyPath,
     appearance,
     talents,
     custom: (raw.custom || '').trim(),

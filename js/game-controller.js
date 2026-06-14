@@ -19,7 +19,9 @@ import {
   renderFamilyPanel,
   renderTimetablePanel,
   renderEventHints,
+  applyHouseTheme,
 } from './ui.js';
+import { formatHouseLabel } from './character-config.js';
 import { applySceneVisual } from './scene-visuals.js';
 import { inferMagicGains, applyInferredMagicGains } from './magic-inference.js';
 import { processAfterTurn } from './progression.js';
@@ -53,7 +55,7 @@ export function renderGameUI(gameState = getGameState()) {
   const ctx = buildEventContext(gameState);
   renderEventHints(getUpcomingEvents(gameState).map((e) => e.label));
   document.getElementById('player-name').textContent = gameState.profile.name;
-  document.getElementById('player-house').textContent = `${gameState.profile.house} · ${gameState.profile.year}年级`;
+  document.getElementById('player-house').textContent = `${formatHouseLabel(gameState.profile)} · ${gameState.profile.year}年级`;
 }
 
 function isHogsmeadeOption(option) {
@@ -207,6 +209,10 @@ function applyResponseInner(data, actionLabel) {
   gameState = addHistoryEntry(gameState, actionLabel, narrative);
   if (data.options) {
     gameState.lastOptions = data.options;
+  }
+
+  if (gameState.profile?.house) {
+    applyHouseTheme(gameState.profile.house);
   }
 
   setGameState(gameState);

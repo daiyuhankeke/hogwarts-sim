@@ -6,7 +6,15 @@ import {
   applyComposedAppearanceToForm,
   fitAppearanceField,
 } from './character-config.js';
-import { getPlaythroughHook } from './progression.js';
+import {
+  BLOOD_STATUS_LORE,
+  ORIGIN_BACKGROUNDS,
+  STORY_PATHS,
+  getAvailableOrigins,
+  formatAcceptanceLetter,
+  renderAcceptanceLetterHtml,
+  resolveDefaultOrigin,
+} from './character-lore.js';
 import {
   showScreen,
   applyHouseTheme,
@@ -28,6 +36,7 @@ import {
   CANON_CONNECTION_OPTIONS,
   collectFamilyFromForm,
   formatFamilyForPrompt,
+  getCanonConnectionsForBlood,
   getFamilyById,
   resolvePlayerNameFromForm,
   resolvePlayerSurname,
@@ -93,6 +102,9 @@ export function initCharacterFormOptions() {
   updateAudioButton();
   initFamilyFormOptions();
   bindFamilyFormEvents();
+  initCharacterLoreOptions();
+  bindCharacterLoreEvents();
+  bindHouseFieldEvents();
   bindAppearanceControls();
   updateAppearanceTraitSummary();
 }
@@ -194,6 +206,17 @@ function updateAudioButton() {
   if (btn) btn.textContent = isAudioEnabled() ? '🔊 环境音' : '🔇 环境音';
 }
 
+function refreshCanonConnectionChips(bloodStatus = '纯血') {
+  const chips = document.getElementById('canon-connection-chips');
+  if (!chips) return;
+  chips.innerHTML = getCanonConnectionsForBlood(bloodStatus)
+    .filter((c) => c.id !== 'none')
+    .map(
+      (c) =>
+        `<label class="talent-chip"><input type="checkbox" name="canonConnection" value="${c.id}"><span>${c.label}</span></label>`
+    ).join('');
+}
+
 function initFamilyFormOptions() {
   const familySelect = document.getElementById('wizard-family-select');
   if (familySelect) {
@@ -216,13 +239,7 @@ function initFamilyFormOptions() {
     ).join('');
   }
 
-  const chips = document.getElementById('canon-connection-chips');
-  if (chips) {
-    chips.innerHTML = CANON_CONNECTION_OPTIONS.filter((c) => c.id !== 'none').map(
-      (c) =>
-        `<label class="talent-chip"><input type="checkbox" name="canonConnection" value="${c.id}"><span>${c.label}</span></label>`
-    ).join('');
-  }
+  refreshCanonConnectionChips(document.getElementById('character-form')?.bloodStatus?.value || '纯血');
 
   updateFamilyFormVisibility();
   syncPlayerSurnameField();
@@ -289,7 +306,7 @@ function bindFamilyFormEvents() {
   form?.familyAutoGenerate?.addEventListener('change', () => {
     const manual = document.getElementById('family-manual-panel');
     const auto = form?.familyAutoGenerate?.checked;
-    if (manual) manual.hidden = auto !== false;
+    if (manual) manual.hidden = auto === true;
   });
   document.getElementById('family-preview-btn')?.addEventListener('click', () => {
     const formEl = document.getElementById('character-form');
@@ -336,7 +353,9 @@ function updateFamilyFormVisibility() {
   }
 
   const manual = document.getElementById('family-manual-panel');
-  if (manual) manual.hidden = form.familyAutoGenerate?.checked !== false;
+  if (manual) manual.hidden = form.familyAutoGenerate?.checked === true;
+
+  refreshCanonConnectionChips(blood);
 }
 
 function collectTalents(form) {
@@ -354,15 +373,144 @@ function updateTalentSummary() {
   el.textContent = talents.length ? `已选：${talents.join('、')}` : '已选：无';
 }
 
+function renderLoreChoice(name, item, checked) {
+  const tagline = item.tagline ? `<span class="lore-choice-tagline">${item.tagline}</span>` : '';
+  return `<label class="lore-choice-card">
+    <input type="radio" name="${name}" value="${item.id}"${checked ? ' checked' : ''}>
+    <span class="lore-choice-indicator" aria-hidden="true"></span>
+    <span class="lore-choice-body">
+      <span class="lore-choice-title">${item.label}</span>
+      ${tagline}
+    </span>
+  </label>`;
+}
+
+function initCharacterLoreOptions() {
+  const storyContainer = document.getElementById('story-path-options');
+  if (storyContainer) {
+    storyContainer.innerHTML = STORY_PATHS.map(
+      (p, i) => renderLoreChoice('storyPath', p, i === 0)
+    ).join('');
+  }
+  updateBloodLorePanel();
+  updateOriginOptions();
+  updateStoryPathLore();
+  updateAcceptanceLetterPreview();
+}
+
+function bindHouseFieldEvents() {
+  const form = document.getElementById('character-form');
+  form?.year?.addEventListener('change', updateHouseFieldVisibility);
+  updateHouseFieldVisibility();
+}
+
+function updateHouseFieldVisibility() {
+  const form = document.getElementById('character-form');
+  if (!form) return;
+  const year = Number(form.year?.value || 1);
+  const isYear1 = year === 1;
+  const wrap = document.getElementById('house-select-wrap');
+  const hint = document.getElementById('house-pending-hint');
+  const select = form.house;
+
+  if (wrap) wrap.hidden = isYear1;
+  if (hint) hint.hidden = !isYear1;
+  if (select) {
+    select.required = !isYear1;
+    select.disabled = isYear1;
+  }
+}
+
+function bindCharacterLoreEvents() {
+  const form = document.getElementById('character-form');
+  form?.bloodStatus?.addEventListener('change', () => {
+    updateBloodLorePanel();
+    updateOriginOptions();
+  });
+  form?.year?.addEventListener('change', updateAcceptanceLetterPreview);
+  form?.givenName?.addEventListener('input', updateAcceptanceLetterPreview);
+  form?.addEventListener('change', (e) => {
+    if (e.target?.name === 'originBackground') updateOriginLoreText();
+    if (e.target?.name === 'storyPath') updateStoryPathLore();
+  });
+}
+
+function updateBloodLorePanel() {
+  const form = document.getElementById('character-form');
+  const panel = document.getElementById('blood-lore-panel');
+  if (!form || !panel) return;
+  const blood = form.bloodStatus?.value || '纯血';
+  const lore = BLOOD_STATUS_LORE[blood];
+  panel.innerHTML = lore
+    ? `<p class="lore-flavor"><strong>${lore.title}</strong> — ${lore.text}</p>`
+    : '';
+}
+
+function updateOriginOptions() {
+  const form = document.getElementById('character-form');
+  const container = document.getElementById('origin-background-options');
+  if (!form || !container) return;
+  const blood = form.bloodStatus?.value || '纯血';
+  const available = getAvailableOrigins(blood);
+  const current = form.querySelector('input[name="originBackground"]:checked')?.value;
+  const defaultId = resolveDefaultOrigin(blood);
+  const selected = available.some((o) => o.id === current) ? current : defaultId;
+
+  container.innerHTML = available.map(
+    (o) => renderLoreChoice('originBackground', o, o.id === selected)
+  ).join('');
+  updateOriginLoreText();
+}
+
+function updateOriginLoreText() {
+  const form = document.getElementById('character-form');
+  const el = document.getElementById('origin-lore-text');
+  if (!form || !el) return;
+  const id = form.querySelector('input[name="originBackground"]:checked')?.value;
+  const lore = ORIGIN_BACKGROUNDS.find((o) => o.id === id);
+  el.textContent = lore?.text || '';
+}
+
+function updateStoryPathLore() {
+  const form = document.getElementById('character-form');
+  const el = document.getElementById('story-path-lore');
+  if (!form || !el) return;
+  const id = form.querySelector('input[name="storyPath"]:checked')?.value || 'everyday';
+  const lore = STORY_PATHS.find((p) => p.id === id);
+  el.textContent = lore?.text || '';
+}
+
+function updateAcceptanceLetterPreview() {
+  const form = document.getElementById('character-form');
+  const wrap = document.getElementById('acceptance-letter-wrap');
+  const letter = document.getElementById('acceptance-letter');
+  if (!form || !wrap || !letter) return;
+  const year = Number(form.year?.value || 1);
+  if (year !== 1) {
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  const { givenName } = resolvePlayerNameFromForm(form);
+  letter.innerHTML = renderAcceptanceLetterHtml({ givenName });
+}
+
 function collectProfileFromForm(form) {
   const { givenName, surname, name } = resolvePlayerNameFromForm(form);
+  const bloodStatus = form.bloodStatus.value;
+  const year = Number(form.year.value);
+  const originBackground = form.querySelector('input[name="originBackground"]:checked')?.value
+    || resolveDefaultOrigin(bloodStatus);
+  const storyPath = form.querySelector('input[name="storyPath"]:checked')?.value || 'everyday';
   return {
     name,
     givenName,
     surname,
-    house: form.house.value,
-    year: Number(form.year.value),
-    bloodStatus: form.bloodStatus.value,
+    house: year === 1 ? null : form.house.value,
+    year,
+    bloodStatus,
+    originBackground,
+    storyPath,
     appearance: form.appearance.value.trim() || applyComposedAppearanceToForm(form),
     talents: collectTalents(form),
     custom: form.custom.value,
@@ -415,8 +563,18 @@ async function generateWand(useFallback = false) {
 function buildStartMessage(profile) {
   const p = profile.name?.trim() ? profile : { ...profile, name: DEFAULT_NAME, appearance: DEFAULT_APPEARANCE };
   let msg = `开始游戏。角色信息：\n`;
-  msg += `姓名：${p.name}\n学院：${p.house}\n年级：${p.year}\n`;
-  msg += `血统：${p.bloodStatus}\n外貌：${p.appearance}\n`;
+  msg += `姓名：${p.name}\n年级：${p.year}\n`;
+  msg += p.year === 1
+    ? `学院：尚未分院（分院仪式中由分院帽决定；分院完成后须在 stateUpdate.profile.house 写入四学院之一）\n`
+    : `学院：${p.house}\n`;
+  msg += `血统：${p.bloodStatus}\n`;
+  if (p.originBackground) {
+    const origin = ORIGIN_BACKGROUNDS.find((o) => o.id === p.originBackground);
+    if (origin) msg += `出身背景：${origin.label} — ${origin.text}\n`;
+  }
+  const path = STORY_PATHS.find((sp) => sp.id === (p.storyPath || 'everyday'));
+  if (path) msg += `叙事路线：${path.label} — ${path.rules.join(' ')}\n`;
+  msg += `外貌：${p.appearance}\n`;
   if (p.family) msg += `${formatFamilyForPrompt(p.family)}\n`;
   const talents = p.talents || [];
   if (talents.length) msg += `特殊才能：${talents.join('、')}\n`;
@@ -424,6 +582,10 @@ function buildStartMessage(profile) {
     msg += `魔杖：${p.wand.wood}，${p.wand.core}，${p.wand.length}，${p.wand.flexibility}\n`;
     if (p.wand.appearance) msg += `魔杖外观：${p.wand.appearance}\n`;
     if (p.wand.affinity) msg += `魔杖相性：${p.wand.affinity}\n`;
+  }
+  if (p.year === 1) {
+    msg += `\n【录取通知书】\n${formatAcceptanceLetter(p)}\n`;
+    msg += '开局可从收到/阅读录取通知书、对角巷采购或赴国王十字开始；学期于九月一日开学。\n';
   }
   if (p.custom) msg += `自定义：${p.custom}\n`;
   msg += `日常叙事基调：${p.tone}\n`;
@@ -456,7 +618,7 @@ export function bindCharacterForm() {
     const gameState = createInitialState(profile);
     setGameState(gameState);
     setCurrentSlot(getCurrentSlot());
-    applyHouseTheme(gameState.profile.house);
+    applyHouseTheme(gameState.profile.house || null);
     showScreen('game-screen');
     bootstrapTurnView('猫头鹰正在送来第一页故事，请稍候……');
     renderGameUI(gameState);
@@ -474,6 +636,10 @@ export function prepareNewCharacterScreen() {
   updateAppearanceTraitSummary();
   const startBtn = document.getElementById('start-game-btn');
   if (startBtn) startBtn.disabled = true;
+  const autoGen = document.querySelector('input[name="familyAutoGenerate"]');
+  if (autoGen) autoGen.checked = false;
+  updateHouseFieldVisibility();
+  updateFamilyFormVisibility();
   clearSceneVisual();
 }
 

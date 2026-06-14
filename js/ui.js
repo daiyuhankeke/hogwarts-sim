@@ -1,6 +1,8 @@
 import { getSpellById, getMasteryLabel, MAGIC_SUBJECTS, OWL_EXAM_SUBJECTS, OWL_GRADE_NAMES } from './magic-system.js';
 import { formatWandSummary } from './wand-system.js';
 import { ACHIEVEMENTS, getClubNames, getGossipLabel, getPlaythroughHook } from './progression.js';
+import { resolveStoryPathLabel } from './character-lore.js';
+import { formatHouseLabel } from './character-config.js';
 import { getCanonicalPlotContext } from './canonical-storyline.js';
 import { WEEKDAYS, PERIOD_LABELS, getTodayClasses, getTodayEveningClasses, SUBJECT_CATALOG } from './timetable.js';
 import { formatTimeInStatus, getDayPhase, migrateTime, parseClock } from './time-system.js';
@@ -15,6 +17,11 @@ const HOUSE_COLORS = {
 };
 
 export function applyHouseTheme(house) {
+  if (!house) {
+    document.documentElement.style.setProperty('--house-primary', '#5c4033');
+    document.documentElement.style.setProperty('--house-accent', '#b8860b');
+    return;
+  }
   const colors = HOUSE_COLORS[house] || HOUSE_COLORS['格兰芬多'];
   document.documentElement.style.setProperty('--house-primary', colors.primary);
   document.documentElement.style.setProperty('--house-accent', colors.accent);
@@ -253,7 +260,7 @@ export function renderProgressPanel(state) {
   if (!el || !state?.progression) return;
 
   const p = state.progression;
-  const house = state.profile?.house ?? '';
+  const house = formatHouseLabel(state.profile);
   const hook = getPlaythroughHook(state.profile?.year ?? 1);
   const gossip = getGossipLabel(p.gossip?.level ?? 0);
   const canon = getCanonicalPlotContext(state);
@@ -305,9 +312,12 @@ export function renderProgressPanel(state) {
 
   const rumors = (p.gossip?.rumors || []).slice(0, 2).map((r) => `<p class="gossip-rumor">${escapeHtml(r)}</p>`).join('');
 
+  const pathLabel = resolveStoryPathLabel(state.profile?.storyPath || 'everyday');
+
   el.innerHTML =
     canonHtml +
     `<div class="prog-hook">${escapeHtml(hook.label)} · ${escapeHtml(hook.hint)}</div>` +
+    `<p class="hint prog-path">路线：${escapeHtml(pathLabel)}</p>` +
     `<div class="house-points">${escapeHtml(house)} +${p.housePoints}` +
     (p.housePenalties ? ` · 警告 ${p.housePenalties}` : '') +
     ` · 流言：${escapeHtml(gossip)}</div>` +

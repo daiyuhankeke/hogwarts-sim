@@ -47,16 +47,8 @@
             <input name="surname" id="player-surname" value="格林" placeholder="自拟姓氏" maxlength="20">
           </label>
           <p id="surname-hint" class="hint full-width">纯血/混血选神圣二十八家族时，姓氏随家族；否则请自拟。</p>
-          <label>学院 *
-            <select name="house" required>
-              <option value="格兰芬多">格兰芬多</option>
-              <option value="斯莱特林">斯莱特林</option>
-              <option value="拉文克劳">拉文克劳</option>
-              <option value="赫奇帕奇">赫奇帕奇</option>
-            </select>
-          </label>
           <label>年级 *
-            <select name="year" required>
+            <select name="year" id="year-select" required>
               <option value="1">1 年级（新生入学）</option>
               <option value="2">2 年级</option>
               <option value="3">3 年级</option>
@@ -66,6 +58,17 @@
               <option value="7">7 年级</option>
             </select>
           </label>
+          <div id="house-select-wrap">
+            <label>学院 *
+              <select name="house" id="house-select" required>
+                <option value="格兰芬多">格兰芬多</option>
+                <option value="斯莱特林">斯莱特林</option>
+                <option value="拉文克劳">拉文克劳</option>
+                <option value="赫奇帕奇">赫奇帕奇</option>
+              </select>
+            </label>
+          </div>
+          <p id="house-pending-hint" class="hint full-width" hidden>一年级新生将在分院仪式中由分院帽决定学院，创角时无需选择。</p>
           <label>血统 *
             <select name="bloodStatus" id="blood-status-select" required>
               <option value="纯血">纯血</option>
@@ -73,6 +76,12 @@
               <option value="麻瓜出身">麻瓜出身</option>
             </select>
           </label>
+          <div id="blood-lore-panel" class="lore-panel full-width" aria-live="polite"></div>
+          <div class="full-width origin-section">
+            <span class="field-label">出身背景</span>
+            <div id="origin-background-options" class="lore-choice-grid"></div>
+            <p id="origin-lore-text" class="lore-flavor hint"></p>
+          </div>
           <div class="full-width family-section" id="family-section">
             <span class="field-label">家庭背景</span>
             <p class="hint" id="family-section-hint">纯血或混血可选择神圣二十八家族；混血者父母一方必为麻瓜或麻瓜出身巫师。若家族鄙视麻瓜而父母跨血统结合，则被家族除名。</p>
@@ -96,7 +105,7 @@
               <p class="hint full-width" id="player-attitude-hint">血统观念与是否效忠伏地魔是两层设定。来自食死徒关联家族、又想抵抗黑魔王，请选「反对伏地魔」。</p>
             </div>
             <label class="checkbox-label">
-              <input type="checkbox" name="familyAutoGenerate" checked>
+              <input type="checkbox" name="familyAutoGenerate">
               自动生成父母详情（性格、外貌、职业、原著关联）
             </label>
             <div id="family-manual-panel" class="family-manual" hidden>
@@ -166,6 +175,15 @@
               <option value="偏小虐">偏小虐</option>
             </select>
           </label>
+          <div class="full-width story-path-section">
+            <span class="field-label">叙事路线</span>
+            <div id="story-path-options" class="lore-choice-grid"></div>
+            <p id="story-path-lore" class="lore-flavor hint"></p>
+          </div>
+          <div id="acceptance-letter-wrap" class="full-width acceptance-letter-section" hidden>
+            <span class="field-label">霍格沃茨录取通知书（预览）</span>
+            <div id="acceptance-letter" class="acceptance-letter-frame"></div>
+          </div>
           <label class="full-width checkbox-label">
             <input type="checkbox" name="saveCedric">
             三强赛时希望拯救塞德里克（改变原著悲剧）

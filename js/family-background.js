@@ -2,6 +2,8 @@
  * 家庭背景：神圣二十八家族、麻瓜态度、父母信息与原著关联
  */
 
+import { pickHouseholdByOrigin, resolveDefaultOrigin, resolveOriginLabel } from './character-lore.js';
+
 /** @typedef {'极端鄙视麻瓜'|'传统纯血主义'|'中立保守'|'改良派'|'亲麻瓜'} FamilyMuggleAttitude */
 
 export const PLAYER_MUGGLE_ATTITUDES = [
@@ -49,7 +51,10 @@ export function formatPlayerAttitudeDisplay(family) {
 }
 
 export function enrichFamilyMetadata(family) {
-  if (!family || family.bloodStatus === '麻瓜出身') return family;
+  if (!family) return family;
+  if (family.bloodStatus === '麻瓜出身') {
+    return sanitizeMugglebornFamily(family);
+  }
   family.hasDarkTies = isDarkTiedFamily(family);
   family.resolvedPlayerMuggleAttitude = resolveEffectiveBloodAttitude(family);
   family.playerMuggleAttitudeDisplay = formatPlayerAttitudeDisplay(family);
@@ -63,7 +68,11 @@ export function enrichFamilyMetadata(family) {
 export function getFamilyPoliticalContext(state) {
   const family = state?.profile?.family;
   if (!family || family.bloodStatus === '麻瓜出身') {
-    return { hasDarkTies: false, rules: [], dmHint: '' };
+    return {
+      hasDarkTies: false,
+      rules: ['玩家父母均为麻瓜，与纯血/巫师家族无血缘或商业往来；勿写马尔福家宴会、魔法部同事等巫师界关联。'],
+      dmHint: '麻瓜家庭：父母不知魔法界，与巫师家族无关联；格兰杰家等同为麻瓜邻居/同事可自然提及。',
+    };
   }
 
   const year = state?.profile?.year ?? 1;
@@ -210,8 +219,50 @@ const APPEARANCES = [
   '麦色皮肤，卷发，笑容温暖',
 ];
 
+const MUGGLE_APPEARANCES = [
+  '高瘦，灰眸，常穿休闲西装',
+  '矮壮，红鼻，笑声洪亮',
+  '金发齐肩，绿眼睛，举止得体',
+  '黑发盘起，戴细框眼镜，气质干练',
+  '雀斑，乱发，手上有咖啡渍',
+  '魁梧，络腮胡，声音低沉',
+  '清秀，薄唇，衣着整洁',
+  '麦色皮肤，卷发，笑容温暖',
+];
+
+/** 麻瓜出身家庭仅允许与麻瓜世界/同类家庭相关的关联 */
+const MUGGLEBORN_CONNECTION_IDS = new Set(['granger_colleague', 'granger_neighbor', 'none']);
+
+export function getCanonConnectionsForBlood(bloodStatus) {
+  if (bloodStatus === '麻瓜出身') {
+    return CANON_CONNECTION_OPTIONS.filter((c) => MUGGLEBORN_CONNECTION_IDS.has(c.id));
+  }
+  return CANON_CONNECTION_OPTIONS;
+}
+
+export function sanitizeMugglebornFamily(family) {
+  if (!family || family.bloodStatus !== '麻瓜出身') return family;
+
+  family.canonConnections = (family.canonConnections || []).filter((label) => {
+    const opt = CANON_CONNECTION_OPTIONS.find((c) => c.label === label);
+    return opt && MUGGLEBORN_CONNECTION_IDS.has(opt.id) && opt.id !== 'none';
+  });
+
+  for (const role of ['father', 'mother']) {
+    const parent = family[role];
+    if (!parent) continue;
+    if (/长袍|魔杖|巫师/.test(parent.appearance || '')) {
+      parent.appearance = pick(makeRng(hashStr(`${parent.name}|fix`)), MUGGLE_APPEARANCES);
+    }
+    parent.bloodStatus = '麻瓜';
+  }
+
+  return family;
+}
+
 const HOUSEHOLDS = {
   pureblood_manor: ['威尔特郡庄园', '约克郡古老宅邸', '苏格兰高地城堡', '伦敦纯血社区联排别墅'],
+  wizard_ordinary: ['英格兰乡村巫师小屋', '小汉格顿附近巫师宅', '苏格兰巫师小镇住宅', '伦敦魔法社区中层联排'],
   wizard_urban: ['伦敦魔法社区公寓', '对角巷附近联排', '霍格莫德周末屋'],
   muggle_suburb: ['伦敦郊区', '曼彻斯特', '伯明翰', '爱丁堡'],
   muggle_urban: ['伦敦肯辛顿', '伦敦克拉彭', '布里斯托'],
@@ -263,6 +314,24 @@ function pickFamily(seed, familyId) {
 }
 
 function pickCanonConnections(rng, bloodStatus, familyDef, manualIds) {
+  if (bloodStatus === '麻瓜出身') {
+    const allowed = CANON_CONNECTION_OPTIONS.filter((c) => MUGGLEBORN_CONNECTION_IDS.has(c.id) && c.id !== 'none');
+    if (manualIds?.length) {
+      return manualIds
+        .map((id) => allowed.find((c) => c.id === id))
+        .filter(Boolean)
+        .map((c) => c.label);
+    }
+    const count = rng() > 0.45 ? (rng() > 0.75 ? 2 : 1) : 0;
+    const chosen = [];
+    const shuffled = [...allowed].sort(() => rng() - 0.5);
+    for (const c of shuffled) {
+      if (chosen.length >= count) break;
+      if (!chosen.includes(c.label)) chosen.push(c.label);
+    }
+    return chosen;
+  }
+
   if (manualIds?.length) {
     return manualIds
       .map((id) => CANON_CONNECTION_OPTIONS.find((c) => c.id === id))
@@ -282,10 +351,6 @@ function pickCanonConnections(rng, bloodStatus, familyDef, manualIds) {
   if (tags.length) {
     const tagged = pool.filter((c) => c.tags.some((t) => tags.includes(t)));
     if (tagged.length) candidates = tagged;
-  }
-  if (bloodStatus === '麻瓜出身') {
-    candidates = pool.filter((c) => c.tags.includes('granger') || c.tags.includes('muggle') || rng() > 0.5);
-    if (!candidates.length) candidates = pool.filter((c) => ['granger_colleague', 'granger_neighbor', 'none'].includes(c.id));
   }
 
   const count = rng() > 0.35 ? (rng() > 0.7 ? 2 : 1) : 0;
@@ -324,7 +389,7 @@ function buildParent(rng, role, bloodStatus, familyDef, overrides = {}) {
     role,
     name: (overrides.name || '').trim() || defaultName,
     bloodStatus: overrides.bloodStatus || parentBloodStatus,
-    appearance: (overrides.appearance || '').trim() || pick(rng, APPEARANCES),
+    appearance: (overrides.appearance || '').trim() || pick(rng, isWizard ? APPEARANCES : MUGGLE_APPEARANCES),
     personality: (overrides.personality || '').trim() || pick(rng, PERSONALITIES),
     occupation: (overrides.occupation || '').trim() || pick(rng, jobs),
     alive: overrides.alive !== false,
@@ -382,6 +447,7 @@ export function buildFamilyBackground(input) {
     customFamilySurname = '',
     wizardParentSide = 'father',
     playerMuggleAttitude = 'inherit',
+    originBackground = resolveDefaultOrigin(bloodStatus),
     autoGenerate = true,
     manual = {},
   } = input;
@@ -399,6 +465,7 @@ export function buildFamilyBackground(input) {
     surname: null,
     familyLabel: null,
     familyMuggleAttitude: null,
+    originBackground,
     household: null,
     wizardParentSide: bloodStatus === '混血' ? wizardParentSide : null,
     father: null,
@@ -413,7 +480,7 @@ export function buildFamilyBackground(input) {
   if (bloodStatus === '麻瓜出身') {
     family.playerMuggleAttitude = null;
     family.playerMuggleAttitudeLabel = null;
-    family.household = pick(rng, [...HOUSEHOLDS.muggle_suburb, ...HOUSEHOLDS.muggle_urban]);
+    family.household = pickHouseholdByOrigin(originBackground, bloodStatus, rng, HOUSEHOLDS);
     family.familyMuggleAttitude = '不适用（麻瓜家庭）';
 
     if (autoGenerate) {
@@ -429,7 +496,7 @@ export function buildFamilyBackground(input) {
 
     family.canonConnections = pickCanonConnections(rng, bloodStatus, null, manual.canonConnectionIds);
     family.summary = `麻瓜出身，成长于${family.household}。父：${family.father.name}（${family.father.occupation}）；母：${family.mother.name}（${family.mother.occupation}）。`;
-    return family;
+    return sanitizeMugglebornFamily(family);
   }
 
   let familyDef = null;
@@ -457,9 +524,9 @@ export function buildFamilyBackground(input) {
   }
 
   if (bloodStatus === '纯血') {
-    family.household = pick(rng, HOUSEHOLDS.pureblood_manor);
+    family.household = pickHouseholdByOrigin(originBackground, bloodStatus, rng, HOUSEHOLDS);
   } else if (bloodStatus === '混血') {
-    family.household = pick(rng, [...HOUSEHOLDS.wizard_urban, ...HOUSEHOLDS.muggle_suburb]);
+    family.household = pickHouseholdByOrigin(originBackground, bloodStatus, rng, HOUSEHOLDS);
   }
 
   const wizardSide = wizardParentSide === 'mother' ? 'mother' : 'father';
@@ -550,6 +617,7 @@ export function normalizeFamily(raw, profileBasics = {}) {
     wizardFamilyId: raw.familyId || raw.wizardFamilyId || 'random',
     customFamilySurname: raw.surname || raw.customFamilySurname || '',
     wizardParentSide: raw.wizardParentSide || 'father',
+    originBackground: raw.originBackground || resolveDefaultOrigin(raw.bloodStatus || profileBasics.bloodStatus),
     playerMuggleAttitude: raw.playerMuggleAttitude || 'inherit',
     autoGenerate: raw.autoGenerate !== false,
     manual: raw.manual || {},
@@ -568,6 +636,9 @@ export function normalizeFamily(raw, profileBasics = {}) {
 export function formatFamilyForPrompt(family) {
   if (!family) return '';
   let text = `【家庭背景】${family.summary || ''}\n`;
+  if (family.originBackground) {
+    text += `出身背景：${resolveOriginLabel(family.originBackground)}\n`;
+  }
   if (family.father) {
     text += `父亲：${family.father.name}，${family.father.appearance}，性格${family.father.personality}，${family.father.occupation}（${family.father.bloodStatus}）\n`;
   }
@@ -685,8 +756,9 @@ export function collectFamilyFromForm(form) {
     wizardFamilyId,
     customFamilySurname,
     wizardParentSide: form.wizardParentSide?.value || 'father',
+    originBackground: form.originBackground?.value || resolveDefaultOrigin(bloodStatus),
     playerMuggleAttitude,
-    autoGenerate: form.familyAutoGenerate?.checked !== false,
+    autoGenerate: form.familyAutoGenerate?.checked === true,
     manual,
   });
 }

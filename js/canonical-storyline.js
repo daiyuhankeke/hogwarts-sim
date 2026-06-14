@@ -1,7 +1,14 @@
 /**
  * 原著主线 — 按玩家年级（= 哈利波特同期学年）对齐
  * 玩家为「旁观者/参与者」，不改变哈利作为事件核心的既定走向
+ * beat.week 为旧 34 周制；运行时经 scaleWeek 转为 17 周学年
  */
+
+import {
+  scaleWeek,
+  WEEKS_PER_YEAR,
+  HARRY_RETURNS_WEEK,
+} from './calendar-config.js';
 
 /** @typedef {{ id: string, week: number, weekEnd?: number, label: string, summary: string, mandatory?: boolean, season?: string }} CanonBeat */
 
@@ -102,8 +109,20 @@ export const CANON_PLOT_BY_YEAR = {
   },
 };
 
+function withScaledWeeks(plot) {
+  return {
+    ...plot,
+    beats: plot.beats.map((b) => ({
+      ...b,
+      week: scaleWeek(b.week),
+      ...(b.weekEnd != null ? { weekEnd: scaleWeek(b.weekEnd) } : {}),
+    })),
+  };
+}
+
 export function getCanonPlotForYear(year) {
-  return CANON_PLOT_BY_YEAR[year] || CANON_PLOT_BY_YEAR[1];
+  const raw = CANON_PLOT_BY_YEAR[year] || CANON_PLOT_BY_YEAR[1];
+  return withScaledWeeks(raw);
 }
 
 export function createInitialCanonPlot(year) {
@@ -177,7 +196,13 @@ function beatDmText(beat) {
 }
 
 function beatForUi(beat) {
-  return { id: beat.id, label: beat.label, summary: beat.summary, overdue: beat.overdue };
+  return {
+    id: beat.id,
+    label: beat.label,
+    summary: beat.summary,
+    week: beat.week,
+    overdue: beat.overdue,
+  };
 }
 
 function isBeatCompleted(completed, year, beatId) {
@@ -269,26 +294,27 @@ export function getCanonicalPlotContext(state) {
     dmRules.push('乌姆里奇、D.A.、神秘事务司等五年级主线不可省略（若玩家为五年级）。');
   }
   if (year === 7) {
-    const harryBack = week >= 28;
+    const harryBack = week >= HARRY_RETURNS_WEEK;
     if (harryBack) {
-      dmRules.push('第28周起哈利、罗恩、赫敏已潜入霍格沃茨，可写短暂同场直至大战；此前学年三人不在校。');
+      dmRules.push(`第${HARRY_RETURNS_WEEK}周起哈利、罗恩、赫敏已潜入霍格沃茨，可写短暂同场直至大战；此前学年三人不在校。`);
     } else {
       dmRules.push(
-        '【七年级硬性规则】哈利·波特、罗恩·韦斯莱、赫敏·格兰杰不在霍格沃茨上课、用餐、图书馆或日常社交；实际在外执行秘密任务（详见 dmSummary，对校内保密）。',
-        '【魂器保密·第1–27周】霍格沃茨内师生（含金妮、卢娜、纳威、玩家）**不得知晓魂器或哈利任务细节**；禁止 NPC 说「哈利在找魂器/某物/重要东西」或让玩家推测任务内容。仅可：失踪、通缉、逃亡、不知去向、偶有密信称平安、邓布利多留给他们一件事（不知是什么）。',
+        `【七年级硬性规则】哈利·波特、罗恩·韦斯莱、赫敏·格兰杰不在霍格沃茨上课、用餐、图书馆或日常社交；实际在外执行秘密任务（详见 dmSummary，对校内保密）。`,
+        `【魂器保密·第1–${HARRY_RETURNS_WEEK - 1}周】霍格沃茨内师生（含金妮、卢娜、纳威、玩家）**不得知晓魂器或哈利任务细节**；禁止 NPC 说「哈利在找魂器/某物/重要东西」或让玩家推测任务内容。仅可：失踪、通缉、逃亡、不知去向、偶有密信称平安、邓布利多留给他们一件事（不知是什么）。`,
         '禁止把三人写在大礼堂/课堂/公共休息室与玩家同桌；校内抵抗由纳威、金妮、卢娜等带领。',
         '若需提及三人，仅限上述模糊传闻或《唱唱反调》影射，不可实体出场。',
       );
     }
   }
 
-  const harryReturnsWeek = 28;
+  const harryReturnsWeek = HARRY_RETURNS_WEEK;
   const goldenTrioAbsent = year === 7 && week < harryReturnsWeek;
 
   return {
     year,
     title: yearPlot.title,
     week,
+    weeksPerYear: WEEKS_PER_YEAR,
     dueBeat: due ? beatForUi(due) : null,
     nextMandatory: nextMandatory ? beatForUi(nextMandatory) : null,
     upcomingBeats: upcoming.map((b) => ({ week: b.week, label: b.label })),

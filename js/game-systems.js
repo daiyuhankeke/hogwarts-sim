@@ -5,8 +5,11 @@ import { getTimetableContext } from './timetable.js';
 import { getCanonicalPlotContext, getCanonEventsForCalendar } from './canonical-storyline.js';
 import { getFamilyInteractionContext } from './family-interactions.js';
 import { getFamilyPoliticalContext } from './family-background.js';
+import { getCharacterLoreContext } from './character-lore.js';
+import { isHousePending } from './character-config.js';
 import { getTimeContext } from './time-system.js';
 import { getActiveScheduleContext } from './schedule-context.js';
+import { scaleWeek, WEEKS_PER_YEAR } from './calendar-config.js';
 
 function isAtHogwarts(state) {
   const loc = state?.scene?.location ?? '';
@@ -48,19 +51,19 @@ function getSceneOptionHint(state, narrative = '') {
 }
 
 const EVENT_CALENDAR = [
-  { id: 'opening_feast', week: 1, label: '开学宴会' },
-  { id: 'halloween', week: 8, label: '万圣节晚宴' },
-  { id: 'goblet_of_fire', week: 8, label: '火焰杯选勇士', requiresFlag: 'triwizardYear' },
-  { id: 'beauxbatons_arrival', week: 9, label: '布斯巴顿抵达', requiresFlag: 'triwizardYear' },
-  { id: 'durmstrang_arrival', week: 9, label: '德姆斯特朗抵达', requiresFlag: 'triwizardYear' },
-  { id: 'triwizard_task1', week: 11, label: '三强赛第一项·斗龙', requiresFlag: 'triwizardYear' },
-  { id: 'yule_ball', week: 14, label: '圣诞舞会', minYear: 4 },
-  { id: 'triwizard_task2', week: 18, label: '三强赛第二项·黑湖', requiresFlag: 'triwizardYear' },
-  { id: 'valentine', week: 20, label: '情人节' },
-  { id: 'quidditch_final', week: 30, label: '魁地奇杯决赛' },
-  { id: 'triwizard_task3', week: 32, label: '三强赛第三项·迷宫', requiresFlag: 'triwizardYear' },
-  { id: 'final_exams', week: 33, label: '期末考试' },
-  { id: 'end_feast', week: 34, label: '学年末宴会' },
+  { id: 'opening_feast', week: scaleWeek(1), label: '开学宴会' },
+  { id: 'halloween', week: scaleWeek(8), label: '万圣节晚宴' },
+  { id: 'goblet_of_fire', week: scaleWeek(8), label: '火焰杯选勇士', requiresFlag: 'triwizardYear' },
+  { id: 'beauxbatons_arrival', week: scaleWeek(9), label: '布斯巴顿抵达', requiresFlag: 'triwizardYear' },
+  { id: 'durmstrang_arrival', week: scaleWeek(9), label: '德姆斯特朗抵达', requiresFlag: 'triwizardYear' },
+  { id: 'triwizard_task1', week: scaleWeek(11), label: '三强赛第一项·斗龙', requiresFlag: 'triwizardYear' },
+  { id: 'yule_ball', week: scaleWeek(14), label: '圣诞舞会', minYear: 4 },
+  { id: 'triwizard_task2', week: scaleWeek(18), label: '三强赛第二项·黑湖', requiresFlag: 'triwizardYear' },
+  { id: 'valentine', week: scaleWeek(20), label: '情人节' },
+  { id: 'quidditch_final', week: scaleWeek(30), label: '魁地奇杯决赛' },
+  { id: 'triwizard_task3', week: scaleWeek(32), label: '三强赛第三项·迷宫', requiresFlag: 'triwizardYear' },
+  { id: 'final_exams', week: scaleWeek(33), label: '期末考试' },
+  { id: 'end_feast', week: WEEKS_PER_YEAR, label: '学年末宴会' },
 ];
 
 export function getUpcomingEvents(state) {
@@ -121,7 +124,9 @@ export function buildEventContext(state) {
   const canonPlot = getCanonicalPlotContext(state);
   const familyInteraction = getFamilyInteractionContext(state);
   const familyPolitical = getFamilyPoliticalContext(state);
+  const characterLore = getCharacterLoreContext(state.profile);
   const timeContext = getTimeContext(state);
+  const sortingPending = isHousePending(state.profile);
   const lastNarrative = state.lastNarrative || state.history?.[state.history.length - 1]?.narrative || '';
 
   return {
@@ -176,6 +181,13 @@ export function buildEventContext(state) {
       : null,
     familyInteraction,
     familyPolitical,
+    characterLore,
+    sorting: sortingPending
+      ? {
+          pending: true,
+          dmHint: '玩家尚未分院：禁止写学院公共休息室、学院长桌「我们的学院」、为某学院加分；分院帽唱毕宣布学院时须写 stateUpdate.profile.house 为四学院之一。',
+        }
+      : { pending: false, house: state.profile?.house || null },
     sceneOptionHint: getSceneOptionHint(state, lastNarrative),
     atHogwarts: isAtHogwarts(state),
     year1PreEnrollment: isYear1PreEnrollment(state),
@@ -185,6 +197,8 @@ export function buildEventContext(state) {
         : '')
       + (familyInteraction.familyPrompt ? ` ${familyInteraction.familyPrompt}` : '')
       + (familyPolitical.dmHint ? ` ${familyPolitical.dmHint}` : '')
+      + (characterLore.dmHint ? ` ${characterLore.dmHint}` : '')
+      + (sortingPending ? ' 【待分院】禁止写学院专属场所/已归属某学院；分院完成时写 stateUpdate.profile.house。' : '')
       + (activeSchedule.dmHint ? ` ${activeSchedule.dmHint}` : '')
   };
 }

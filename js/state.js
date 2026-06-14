@@ -3,6 +3,7 @@ import {
   YEAR_OFFSETS,
   computeNpcYears,
   normalizeProfile,
+  HOUSES,
 } from './character-config.js';
 import { createInitialMagic, migrateMagic, mergeMagicUpdate } from './magic-system.js';
 import { createFallbackWand } from './wand-system.js';
@@ -10,7 +11,9 @@ import { createInitialProgression, migrateProgression, mergeProgressionUpdate, p
 import { createTimetable, migrateTimetable, mergeTimetableUpdate } from './timetable.js';
 import { migrateCanonPlot, mergeCanonPlotUpdate } from './canonical-storyline.js';
 import { migrateTime } from './time-system.js';
+import { migrateGameWeek } from './calendar-config.js';
 import { enrichFamilyMetadata } from './family-background.js';
+import { resolveDefaultOrigin } from './character-lore.js';
 
 const STORAGE_KEY = 'hogwarts-sim-save';
 const SLOT_PREFIX = 'hogwarts-sim-slot-';
@@ -93,6 +96,19 @@ export function normalizeLoadedState(state) {
   if (state.profile?.family) {
     state.profile.family = enrichFamilyMetadata(state.profile.family);
   }
+  if (state.profile && !state.profile.originBackground) {
+    state.profile.originBackground = state.profile.family?.originBackground
+      || resolveDefaultOrigin(state.profile.bloodStatus);
+  }
+  if (state.profile && !state.profile.storyPath) {
+    state.profile.storyPath = 'everyday';
+  }
+  if (state.profile?.year === 1 && state.profile.house === undefined) {
+    state.profile.house = null;
+  }
+  if (state.profile?.year > 1 && !state.profile.house) {
+    state.profile.house = '格兰芬多';
+  }
   delete state.career;
   if (state.flags?.graduated !== undefined) delete state.flags.graduated;
 
@@ -130,6 +146,7 @@ export function createInitialState(rawProfile) {
       triwizardParticipant: false,
       yuleBallPartner: null,
       saveCedric: profile.saveCedric === true,
+      houseSorted: !!profile.house,
       eventsTriggered: [],
       ending: null,
       canonPlot: migrateCanonPlot({ profile, flags: {} }),
@@ -199,6 +216,11 @@ export function mergeStateUpdate(state, update) {
     next.timetable = mergeTimetableUpdate(next.timetable || migrateTimetable(next), update.timetable);
   }
 
+  if (update.profile?.house && HOUSES.includes(update.profile.house)) {
+    next.profile = { ...next.profile, house: update.profile.house };
+    next.flags = { ...next.flags, houseSorted: true };
+  }
+
   return next;
 }
 
@@ -238,7 +260,7 @@ export function listSaveSlots() {
       ? {
           slot: i,
           name: state.profile.name,
-          house: state.profile.house,
+          house: state.profile.house || '待分院',
           year: state.profile.year,
           week: state.time.week,
           turn: state.turnCount,
