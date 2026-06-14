@@ -258,6 +258,59 @@ body[data-weather="雪"] .scene-backdrop-fx,
   display: none !important;
 }
 
+.save-screen-card {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.save-slot-list {
+  display: grid;
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+
+.save-slot-card {
+  border: 1px solid var(--border-gold);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  background: rgba(255, 254, 248, 0.75);
+}
+
+.save-slot-card.save-slot-empty {
+  opacity: 0.92;
+}
+
+.save-slot-head {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.save-slot-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--house-primary);
+}
+
+.save-slot-meta {
+  margin: 0.35rem 0 0.85rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.save-slot-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.save-screen-actions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 1rem;
+}
+
 .card {
   background: var(--bg-parchment);
   border: 2px solid var(--border-gold);

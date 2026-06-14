@@ -3,7 +3,8 @@ import { formatWandSummary } from './wand-system.js';
 import { ACHIEVEMENTS, getClubNames, getGossipLabel, getPlaythroughHook } from './progression.js';
 import { getCanonicalPlotContext } from './canonical-storyline.js';
 import { WEEKDAYS, PERIOD_LABELS, getTodayClasses, getTodayEveningClasses, SUBJECT_CATALOG } from './timetable.js';
-import { formatTimeInStatus, getDayPhase, isDuringClass, migrateTime } from './time-system.js';
+import { formatTimeInStatus, getDayPhase, migrateTime, parseClock } from './time-system.js';
+import { getActiveScheduleContext } from './schedule-context.js';
 import { getAttitudeClass, getToneLabel, migrateFamilyTrack, getSuggestedFamilyBeats } from './family-interactions.js';
 
 const HOUSE_COLORS = {
@@ -405,14 +406,18 @@ export function renderTimetablePanel(state) {
   const today = time.weekday ?? '周一';
   const todayClasses = getTodayClasses(state);
   const evening = getTodayEveningClasses(state);
-  const phase = getDayPhase(time.clock);
+  const scheduleCtx = getActiveScheduleContext(state);
+  const currentClass = scheduleCtx.currentClass;
 
   let todayHtml = '';
   if (today === '周六' || today === '周日') {
-    todayHtml = `<p class="hint">${today} · ${escapeHtml(time.clock)} · ${escapeHtml(phase)}${today === '周六' && state.profile?.year >= 3 ? '（三年级以上可去霍格莫德）' : ''}</p>`;
+    todayHtml = `<p class="hint">${today} · ${escapeHtml(time.clock)} · ${escapeHtml(getDayPhase(time.clock))}${today === '周六' && state.profile?.year >= 3 ? '（三年级以上可去霍格莫德）' : ''}</p>`;
   } else if (todayClasses.length) {
     todayHtml = todayClasses.map((c) => {
-      const isNow = c.subjectId !== 'free' && c.subjectId !== 'study' && isDuringClass(time.clock, c.time);
+      const isNow =
+        currentClass?.period === c.period &&
+        c.subjectId !== 'free' &&
+        c.subjectId !== 'study';
       return `<div class="tt-today-row${isNow ? ' tt-now' : c.subjectId === 'free' || c.subjectId === 'study' ? ' tt-muted' : ''}">` +
         `<span class="tt-time">${escapeHtml(c.time)}</span>` +
         `<span class="tt-subject">${escapeHtml(c.name)}${isNow ? ' ◀' : ''}</span>` +
@@ -420,7 +425,7 @@ export function renderTimetablePanel(state) {
     }).join('');
     if (evening.length) {
       todayHtml += evening.map((c) => {
-        const isNow = isDuringClass(time.clock, c.time);
+        const isNow = /天文/.test(c.name) && parseClock(time.clock) >= parseClock('23:00');
         return `<div class="tt-today-row tt-evening${isNow ? ' tt-now' : ''}"><span class="tt-time">${escapeHtml(c.time)}</span>` +
           `<span class="tt-subject">${escapeHtml(c.name)}${isNow ? ' ◀' : ''}</span>` +
           `<span class="tt-teacher">${escapeHtml(c.teacher)}</span></div>`;
@@ -478,6 +483,34 @@ export function showScreen(screenId) {
   document.querySelectorAll('.screen').forEach((s) => {
     s.hidden = s.id !== screenId;
   });
+}
+
+export function renderSaveScreen(slots) {
+  const el = document.getElementById('save-slot-list');
+  if (!el) return;
+
+  el.innerHTML = slots.map((info, i) => {
+    if (info) {
+      return (
+        `<article class="save-slot-card">` +
+        `<div class="save-slot-head">存档槽 ${i + 1}</div>` +
+        `<div class="save-slot-name">${escapeHtml(info.name)}</div>` +
+        `<div class="save-slot-meta">${escapeHtml(info.house)} · ${info.year}年级 · 第${info.week}周 · ${info.turn} 回合</div>` +
+        `<div class="save-slot-btns">` +
+        `<button type="button" class="btn btn-primary btn-small save-continue-btn" data-slot="${i}">继续游戏</button>` +
+        `<button type="button" class="btn btn-secondary btn-small save-new-btn" data-slot="${i}">新游戏（覆盖）</button>` +
+        `</div></article>`
+      );
+    }
+    return (
+      `<article class="save-slot-card save-slot-empty">` +
+      `<div class="save-slot-head">存档槽 ${i + 1}</div>` +
+      `<p class="hint">空槽位</p>` +
+      `<div class="save-slot-btns">` +
+      `<button type="button" class="btn btn-primary btn-small save-new-btn" data-slot="${i}">创建新角色</button>` +
+      `</div></article>`
+    );
+  }).join('');
 }
 
 export function populateSaveSlots(slots) {

@@ -8,6 +8,7 @@ import {
 } from './state.js';
 import {
   populateSaveSlots,
+  renderSaveScreen,
   showScreen,
   renderNarrative,
   renderOptions,
@@ -21,6 +22,7 @@ import {
   setGameState,
   getCurrentSlot,
   setCurrentSlot,
+  resetSession,
 } from './game-store.js';
 import {
   bootstrapTurnView,
@@ -28,8 +30,74 @@ import {
   handleOptionSelect,
   renderGameUI,
 } from './game-controller.js';
+import { prepareNewCharacterScreen } from './create-controller.js';
+
+export function showSaveScreen() {
+  clearSceneVisual();
+  resetSession();
+  renderSaveScreen(listSaveSlots());
+  populateSaveSlots(listSaveSlots());
+  showScreen('save-screen');
+}
+
+export function loadGameFromSlot(slot) {
+  const loaded = loadGame(slot);
+  if (!loaded) return false;
+
+  setGameState(loaded);
+  setCurrentSlot(slot);
+  applyHouseTheme(loaded.profile.house);
+  showScreen('game-screen');
+  renderGameUI(loaded);
+
+  const lastHist = loaded.history[loaded.history.length - 1];
+  const narrative = lastHist?.narrative || loaded.lastNarrative;
+  if (narrative) {
+    renderNarrative(narrative);
+    renderOptions(getOptionsForState(), handleOptionSelect);
+  } else {
+    bootstrapTurnView('读档成功。正在等待剧情，你也可以先选一项行动。');
+  }
+  hideError();
+  return true;
+}
+
+function beginNewGameInSlot(slot) {
+  const existing = loadGame(slot);
+  if (existing && !confirm(`存档槽 ${slot + 1} 已有进度（${existing.profile.name}），确定覆盖并开始新游戏？`)) {
+    return;
+  }
+  setCurrentSlot(slot);
+  prepareNewCharacterScreen();
+  showScreen('create-screen');
+}
+
+function bindSaveScreenControls() {
+  document.getElementById('save-slot-list')?.addEventListener('click', (e) => {
+    const continueBtn = e.target.closest('.save-continue-btn');
+    const newBtn = e.target.closest('.save-new-btn');
+    if (continueBtn) {
+      const slot = Number(continueBtn.dataset.slot);
+      if (!loadGameFromSlot(slot)) showError('该存档槽为空');
+      return;
+    }
+    if (newBtn) beginNewGameInSlot(Number(newBtn.dataset.slot));
+  });
+
+  document.getElementById('save-screen-import-btn')?.addEventListener('click', () => {
+    document.getElementById('import-file')?.click();
+  });
+}
 
 export function bindSaveControls() {
+  bindSaveScreenControls();
+
+  document.getElementById('new-game-btn')?.addEventListener('click', () => {
+    if (confirm('返回存档选择？未保存的进度将丢失。')) {
+      showSaveScreen();
+    }
+  });
+
   document.getElementById('save-btn')?.addEventListener('click', () => {
     const gameState = getGameState();
     if (!gameState) return;
@@ -42,20 +110,7 @@ export function bindSaveControls() {
 
   document.getElementById('load-btn')?.addEventListener('click', () => {
     const slot = Number(document.getElementById('save-slot-select')?.value ?? 0);
-    const loaded = loadGame(slot);
-    if (!loaded) {
-      showError('该存档槽为空');
-      return;
-    }
-    setGameState(loaded);
-    setCurrentSlot(slot);
-    applyHouseTheme(loaded.profile.house);
-    showScreen('game-screen');
-    renderGameUI(loaded);
-    const lastHist = loaded.history[loaded.history.length - 1];
-    renderNarrative(lastHist?.narrative || loaded.lastNarrative || '读档成功，请选择下一步行动。');
-    renderOptions(getOptionsForState(), handleOptionSelect);
-    hideError();
+    if (!loadGameFromSlot(slot)) showError('该存档槽为空');
   });
 
   document.getElementById('export-btn')?.addEventListener('click', () => {

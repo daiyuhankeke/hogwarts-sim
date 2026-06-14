@@ -47,6 +47,11 @@ export default async function handler(req, res) {
     const canonCtx = {
       year: compactState?.profile?.year,
       week: compactState?.time?.week,
+      weekday: compactState?.time?.weekday,
+      clock: compactState?.time?.clock,
+      location: compactState?.scene?.location,
+      profile: compactState?.profile,
+      timetable: compactState?.timetable,
     };
     let canon = checkCanonicalViolations(parsed?.narrative, canonCtx, parsed?.options);
     if (!canon.ok) {

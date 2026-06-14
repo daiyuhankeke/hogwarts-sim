@@ -38,6 +38,7 @@ import {
   setPendingWand,
   setGameState,
   setCurrentSlot,
+  getCurrentSlot,
   resetSession,
   getGameState,
 } from './game-store.js';
@@ -454,7 +455,7 @@ export function bindCharacterForm() {
     const profile = collectProfileFromForm(form);
     const gameState = createInitialState(profile);
     setGameState(gameState);
-    setCurrentSlot(0);
+    setCurrentSlot(getCurrentSlot());
     applyHouseTheme(gameState.profile.house);
     showScreen('game-screen');
     bootstrapTurnView('猫头鹰正在送来第一页故事，请稍候……');
@@ -464,21 +465,16 @@ export function bindCharacterForm() {
   });
 }
 
-export function bindNewGameControl() {
-  document.getElementById('new-game-btn')?.addEventListener('click', () => {
-    if (confirm('开始新游戏？未保存的进度将丢失。')) {
-      resetSession();
-      renderWandPreview(document.getElementById('wand-preview'), null);
-      const appearanceField = document.getElementById('player-appearance');
-      if (appearanceField) appearanceField.value = '';
-      clearAppearanceTraitInputs(document.getElementById('character-form'));
-      updateAppearanceTraitSummary();
-      const startBtn = document.getElementById('start-game-btn');
-      if (startBtn) startBtn.disabled = true;
-      clearSceneVisual();
-      showScreen('create-screen');
-    }
-  });
+export function prepareNewCharacterScreen() {
+  resetSession();
+  renderWandPreview(document.getElementById('wand-preview'), null);
+  const appearanceField = document.getElementById('player-appearance');
+  if (appearanceField) appearanceField.value = '';
+  clearAppearanceTraitInputs(document.getElementById('character-form'));
+  updateAppearanceTraitSummary();
+  const startBtn = document.getElementById('start-game-btn');
+  if (startBtn) startBtn.disabled = true;
+  clearSceneVisual();
 }
 
 export function bindInviteCode() {

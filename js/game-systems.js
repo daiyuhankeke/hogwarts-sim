@@ -6,10 +6,26 @@ import { getCanonicalPlotContext, getCanonEventsForCalendar } from './canonical-
 import { getFamilyInteractionContext } from './family-interactions.js';
 import { getFamilyPoliticalContext } from './family-background.js';
 import { getTimeContext } from './time-system.js';
+import { getActiveScheduleContext } from './schedule-context.js';
 
 function isAtHogwarts(state) {
   const loc = state?.scene?.location ?? '';
+  if (/特快|火车|9又四分之三|九又四分之三|国王十字|站台|对角巷|奥利凡德|破釜酒吧/.test(loc)) {
+    return false;
+  }
   return /霍格沃茨|城堡|图书馆|公共休息室|大礼堂|教室|走廊|温室|魁地奇|魔药|魔咒|变形|地窖|塔|格兰芬多|斯莱特林|拉文克劳|赫奇帕奇/.test(loc);
+}
+
+/** 一年级尚未正式入校（特快、9¾、赴校途中） */
+export function isYear1PreEnrollment(state) {
+  const year = state?.profile?.year ?? 1;
+  if (year !== 1) return false;
+  const week = state?.time?.week ?? 1;
+  if (week > 1) return false;
+  const loc = state?.scene?.location ?? '';
+  if (/特快|火车|9又四分之三|九又四分之三|国王十字|站台/.test(loc)) return true;
+  if (/对角巷|奥利凡德|破釜酒吧/.test(loc)) return true;
+  return !isAtHogwarts(state);
 }
 
 function getSceneOptionHint(state, narrative = '') {
@@ -24,6 +40,7 @@ function getSceneOptionHint(state, narrative = '') {
     clock ? `clock=${clock}` : '',
     year >= 3 && weekday === '周六' ? '周六可去霍格莫德' : '',
     isAtHogwarts(state) ? '已入学，勿给出特快/国王十字/对角巷/分院前等过期选项' : '',
+    isYear1PreEnrollment(state) ? '【入学途中】尚未到校上课：勿写魔药课/公共休息室等校内经历；纳威丢蟾蜍为初次，赫敏首次询问' : '',
     tail ? `narrative 末尾：…${tail.slice(-220)}` : '',
     'options 须承接 narrative 末尾正在发生的事',
   ];
@@ -100,6 +117,7 @@ export function buildEventContext(state) {
   const npcSchedule = getNpcScheduleContext(state);
   const prog = state.progression;
   const timetable = getTimetableContext(state);
+  const activeSchedule = getActiveScheduleContext(state);
   const canonPlot = getCanonicalPlotContext(state);
   const familyInteraction = getFamilyInteractionContext(state);
   const familyPolitical = getFamilyPoliticalContext(state);
@@ -112,7 +130,28 @@ export function buildEventContext(state) {
     triwizardEligible: canBeTriwizardChampion(state),
     playthroughHook: hook,
     npcSchedule,
-    timetable,
+    timetable: {
+      ...timetable,
+      activeSchedule: {
+        clock: activeSchedule.clock,
+        period: activeSchedule.period,
+        periodStart: activeSchedule.periodStart,
+        periodEnd: activeSchedule.periodEnd,
+        currentClass: activeSchedule.currentClass
+          ? {
+              name: activeSchedule.currentClass.name,
+              teacher: activeSchedule.currentClass.teacher,
+              room: activeSchedule.currentClass.room,
+              subjectId: activeSchedule.currentClass.subjectId,
+            }
+          : null,
+        endedClasses: (activeSchedule.endedClasses || []).map((c) => ({
+          name: c.name,
+          end: c.periodEnd,
+        })),
+        dmHint: activeSchedule.dmHint,
+      },
+    },
     time: timeContext,
     canonPlot,
     housePoints: prog?.housePoints ?? 0,
@@ -139,9 +178,14 @@ export function buildEventContext(state) {
     familyPolitical,
     sceneOptionHint: getSceneOptionHint(state, lastNarrative),
     atHogwarts: isAtHogwarts(state),
+    year1PreEnrollment: isYear1PreEnrollment(state),
     dmReminder: '每 5 回合须推进至少一项：学业/学院事件/魔法/社团/原著主线/家庭线。大事件准备期请给准备阶段选项。主线须对齐 canonPlot。options 必须与本回合 narrative 末尾场景一致，见 sceneOptionHint。本作为霍格沃茨日常模拟，勿主动推进恋爱线或特殊恋爱结局。'
+      + (isYear1PreEnrollment(state)
+        ? ' 【一年级·入学途中】特快/9¾：禁止写已上过魔药课、公共休息室等校内经历；纳威丢蟾蜍为初次，赫敏首次出场询问，不可写「上次」重复或魔药课地下室。'
+        : '')
       + (familyInteraction.familyPrompt ? ` ${familyInteraction.familyPrompt}` : '')
-      + (familyPolitical.dmHint ? ` ${familyPolitical.dmHint}` : ''),
+      + (familyPolitical.dmHint ? ` ${familyPolitical.dmHint}` : '')
+      + (activeSchedule.dmHint ? ` ${activeSchedule.dmHint}` : '')
   };
 }
 

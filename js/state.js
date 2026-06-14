@@ -234,7 +234,16 @@ export function listSaveSlots() {
   const slots = [];
   for (let i = 0; i < MAX_SLOTS; i++) {
     const state = loadGame(i);
-    slots.push(state ? { slot: i, name: state.profile.name, week: state.time.week, turn: state.turnCount } : null);
+    slots.push(state
+      ? {
+          slot: i,
+          name: state.profile.name,
+          house: state.profile.house,
+          year: state.profile.year,
+          week: state.time.week,
+          turn: state.turnCount,
+        }
+      : null);
   }
   return slots;
 }

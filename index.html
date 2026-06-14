@@ -18,8 +18,20 @@
   </header>
 
   <main>
+    <!-- 存档选择 -->
+    <section id="save-screen" class="screen">
+      <div class="card save-screen-card">
+        <h2>选择存档</h2>
+        <p class="hint">选择一个存档槽继续冒险，或在空槽位创建新角色。</p>
+        <div id="save-slot-list" class="save-slot-list"></div>
+        <div class="save-screen-actions">
+          <button type="button" id="save-screen-import-btn" class="btn btn-secondary btn-small">导入存档</button>
+        </div>
+      </div>
+    </section>
+
     <!-- 角色创建 -->
-    <section id="create-screen" class="screen">
+    <section id="create-screen" class="screen" hidden>
       <div class="card">
         <h2>创建你的女巫</h2>
         <p class="hint">性别固定为女性。填写完成后开始你的霍格沃茨生活。</p>

@@ -23,7 +23,8 @@ import {
 import { applySceneVisual } from './scene-visuals.js';
 import { inferMagicGains, applyInferredMagicGains } from './magic-inference.js';
 import { processAfterTurn } from './progression.js';
-import { applyTimeAfterTurn } from './time-system.js';
+import { applyTimeAfterTurn, migrateTime } from './time-system.js';
+import { capClockToSchedule } from './schedule-context.js';
 import { sanitizeStateUpdate } from '../lib/validateStateUpdate.js';
 import {
   getGameState,
@@ -177,6 +178,14 @@ function applyResponseInner(data, actionLabel) {
     gameState,
     { actionLabel, narrative: data.narrative || '' }
   );
+  gameState.time = {
+    ...gameState.time,
+    clock: capClockToSchedule(gameState.time.clock, gameState, {
+      actionLabel,
+      narrative: data.narrative || '',
+    }),
+  };
+  gameState.time = migrateTime({ ...gameState, time: gameState.time });
 
   if (data.ending) {
     gameState.flags.ending = data.ending;
