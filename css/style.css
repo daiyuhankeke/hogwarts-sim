@@ -977,8 +977,21 @@ textarea {
 }
 
 .player-info {
+  text-align: right;
   font-size: 0.9rem;
-  opacity: 0.9;
+  line-height: 1.45;
+  max-width: min(100%, 420px);
+}
+
+.player-info-name {
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.03em;
+}
+
+.player-info-meta {
+  opacity: 0.92;
+  font-size: 0.88rem;
 }
 
 .wand-section {

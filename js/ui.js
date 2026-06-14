@@ -1,8 +1,8 @@
 import { getSpellById, getMasteryLabel, MAGIC_SUBJECTS, OWL_EXAM_SUBJECTS, OWL_GRADE_NAMES } from './magic-system.js';
 import { formatWandSummary } from './wand-system.js';
 import { ACHIEVEMENTS, getClubNames, getGossipLabel, getPlaythroughHook } from './progression.js';
-import { resolveStoryPathLabel } from './character-lore.js';
 import { formatHouseLabel } from './character-config.js';
+import { resolveStoryPathLabel } from './character-lore.js';
 import { getCanonicalPlotContext } from './canonical-storyline.js';
 import { WEEKDAYS, PERIOD_LABELS, getTodayClasses, getTodayEveningClasses, SUBJECT_CATALOG } from './timetable.js';
 import { formatTimeInStatus, getDayPhase, migrateTime, parseClock } from './time-system.js';
@@ -345,7 +345,7 @@ export function renderFamilyPanel(state) {
   const beats = getSuggestedFamilyBeats(state);
 
   const familyTitle = family.familyLabel
-    ? `${family.familyLabel}${family.sacred28 ? ' · 神圣二十八' : ''}`
+    ? `${family.familyLabel}${family.sacred28 ? ' · 神圣二十八家族' : ''}`
     : (family.bloodStatus === '麻瓜出身' ? '麻瓜家庭' : '巫师家庭');
 
   const attitudeHtml = family.familyMuggleAttitude && family.familyMuggleAttitude !== '不适用（麻瓜家庭）'
@@ -489,10 +489,33 @@ export function showMilestoneToast(milestones) {
   }, 5000);
 }
 
+export function syncHeaderVisibility(screenId) {
+  const info = document.getElementById('header-player-info');
+  if (info) info.hidden = screenId !== 'game-screen';
+}
+
+/** 顶栏：姓名、学院、年级、魔法等级 */
+export function renderHeaderPlayerInfo(state) {
+  syncHeaderVisibility('game-screen');
+  if (!state?.profile) return;
+
+  const nameEl = document.getElementById('player-name');
+  const houseEl = document.getElementById('player-house');
+  if (!nameEl || !houseEl) return;
+
+  const house = formatHouseLabel(state.profile);
+  const year = state.profile.year ?? 1;
+  const magicRank = state.magic?.rank || '魔法初学者';
+
+  nameEl.textContent = state.profile.name || '女巫';
+  houseEl.textContent = `学院：${house} · ${year}年级 · 魔法：${magicRank}`;
+}
+
 export function showScreen(screenId) {
   document.querySelectorAll('.screen').forEach((s) => {
     s.hidden = s.id !== screenId;
   });
+  syncHeaderVisibility(screenId);
 }
 
 export function renderSaveScreen(slots) {
