@@ -232,27 +232,34 @@
             </div>
           </div>
         </div>
-        <aside>
-          <div class="card">
-            <h2>家庭</h2>
-            <div id="family-panel"><p class="hint">等待开始……</p></div>
-          </div>
-          <div class="card">
-            <h2>课表</h2>
-            <div id="timetable-panel"><p class="hint">等待开始……</p></div>
-          </div>
-          <div class="card">
-            <h2>霍格沃茨生活</h2>
-            <div id="progress-panel"><p class="hint">等待开始……</p></div>
-          </div>
-          <div class="card">
-            <h2>魔法能力</h2>
-            <div id="magic-panel"><p class="hint">等待开始……</p></div>
-          </div>
-          <div class="card">
-            <h2>人物关系</h2>
-            <div id="relationships-panel"><p class="hint">尚未与同学建立熟识关系</p></div>
-            <div id="event-hints"></div>
+        <aside class="game-sidebar">
+          <div class="card sidebar-card">
+            <div id="sidebar-glance" class="sidebar-glance" aria-live="polite"></div>
+            <div class="sidebar-tabs" role="tablist" aria-label="信息面板">
+              <button type="button" class="sidebar-tab is-active" role="tab" data-tab="timetable" aria-selected="true" aria-controls="sidebar-panel-timetable" id="sidebar-tab-timetable">课表</button>
+              <button type="button" class="sidebar-tab" role="tab" data-tab="life" aria-selected="false" aria-controls="sidebar-panel-life" id="sidebar-tab-life">生活</button>
+              <button type="button" class="sidebar-tab" role="tab" data-tab="magic" aria-selected="false" aria-controls="sidebar-panel-magic" id="sidebar-tab-magic">魔法</button>
+              <button type="button" class="sidebar-tab" role="tab" data-tab="relations" aria-selected="false" aria-controls="sidebar-panel-relations" id="sidebar-tab-relations">关系</button>
+              <button type="button" class="sidebar-tab" role="tab" data-tab="family" aria-selected="false" aria-controls="sidebar-panel-family" id="sidebar-tab-family">家庭</button>
+            </div>
+            <div class="sidebar-body">
+              <div id="sidebar-panel-timetable" class="sidebar-panel is-active" role="tabpanel" aria-labelledby="sidebar-tab-timetable">
+                <div id="timetable-panel"><p class="hint">等待开始……</p></div>
+              </div>
+              <div id="sidebar-panel-life" class="sidebar-panel" role="tabpanel" aria-labelledby="sidebar-tab-life" hidden>
+                <div id="progress-panel"><p class="hint">等待开始……</p></div>
+              </div>
+              <div id="sidebar-panel-magic" class="sidebar-panel" role="tabpanel" aria-labelledby="sidebar-tab-magic" hidden>
+                <div id="magic-panel"><p class="hint">等待开始……</p></div>
+              </div>
+              <div id="sidebar-panel-relations" class="sidebar-panel" role="tabpanel" aria-labelledby="sidebar-tab-relations" hidden>
+                <div id="relationships-panel"><p class="hint">尚未与同学建立熟识关系</p></div>
+                <div id="event-hints" class="event-hints"></div>
+              </div>
+              <div id="sidebar-panel-family" class="sidebar-panel" role="tabpanel" aria-labelledby="sidebar-tab-family" hidden>
+                <div id="family-panel"><p class="hint">等待开始……</p></div>
+              </div>
+            </div>
           </div>
         </aside>
       </div>

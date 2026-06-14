@@ -21,6 +21,7 @@ import {
   renderEventHints,
   applyHouseTheme,
   renderHeaderPlayerInfo,
+  renderSidebarGlance,
 } from './ui.js';
 import { applySceneVisual } from './scene-visuals.js';
 import { inferMagicGains, applyInferredMagicGains } from './magic-inference.js';
@@ -55,6 +56,7 @@ export function renderGameUI(gameState = getGameState()) {
   const ctx = buildEventContext(gameState);
   renderEventHints(getUpcomingEvents(gameState).map((e) => e.label));
   renderHeaderPlayerInfo(gameState);
+  renderSidebarGlance(gameState);
 }
 
 function isHogsmeadeOption(option) {

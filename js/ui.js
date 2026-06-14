@@ -115,7 +115,89 @@ export function renderRelationships(state) {
 export function renderEventHints(events) {
   const el = document.getElementById('event-hints');
   if (!el) return;
-  el.textContent = events?.length ? `近期：${events.join('、')}` : '';
+  el.textContent = events?.length ? `近期事件：${events.join('、')}` : '';
+}
+
+const SIDEBAR_TAB_KEY = 'hogwarts-sidebar-tab';
+
+export function initSidebarTabs() {
+  const tablist = document.querySelector('.sidebar-tabs');
+  if (!tablist || tablist.dataset.bound) return;
+  tablist.dataset.bound = '1';
+
+  const tabs = [...tablist.querySelectorAll('.sidebar-tab')];
+  const panels = [...document.querySelectorAll('.sidebar-panel')];
+
+  function activate(tabId) {
+    tabs.forEach((tab) => {
+      const active = tab.dataset.tab === tabId;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    panels.forEach((panel) => {
+      const active = panel.id === `sidebar-panel-${tabId}`;
+      panel.classList.toggle('is-active', active);
+      panel.hidden = !active;
+    });
+    try {
+      sessionStorage.setItem(SIDEBAR_TAB_KEY, tabId);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  tablist.addEventListener('click', (e) => {
+    const tab = e.target.closest('.sidebar-tab');
+    if (!tab?.dataset.tab) return;
+    activate(tab.dataset.tab);
+  });
+
+  const saved = (() => {
+    try {
+      return sessionStorage.getItem(SIDEBAR_TAB_KEY);
+    } catch {
+      return null;
+    }
+  })();
+  if (saved && tabs.some((t) => t.dataset.tab === saved)) {
+    activate(saved);
+  }
+}
+
+export function renderSidebarGlance(state) {
+  const el = document.getElementById('sidebar-glance');
+  if (!el || !state) return;
+
+  const time = migrateTime(state);
+  const schedule = getActiveScheduleContext(state);
+  const canon = getCanonicalPlotContext(state);
+  const house = formatHouseLabel(state.profile);
+  const points = state.progression?.housePoints ?? 0;
+
+  let nowLabel = state.scene?.location || '霍格沃茨';
+  if (schedule.currentClass && schedule.currentClass.subjectId !== 'free' && schedule.currentClass.subjectId !== 'study') {
+    nowLabel = `📚 ${schedule.currentClass.name}`;
+  } else if (time.weekday === '周六' && state.profile?.year >= 3) {
+    nowLabel = '霍格莫德日（三年级以上）';
+  }
+
+  const badges = [];
+  if (canon.dueBeat) {
+    badges.push(`<span class="sidebar-glance-badge is-urgent">主线 · ${escapeHtml(canon.dueBeat.label)}</span>`);
+  } else if (canon.nextMandatory) {
+    badges.push(`<span class="sidebar-glance-badge">W${canon.nextMandatory.week ?? '?'} ${escapeHtml(canon.nextMandatory.label)}</span>`);
+  }
+  if (state.progression?.exams?.active) {
+    badges.push('<span class="sidebar-glance-badge is-urgent">O.W.L. 考试周</span>');
+  }
+  badges.push(`<span class="sidebar-glance-badge">${escapeHtml(house)} +${points}</span>`);
+
+  el.innerHTML =
+    `<div class="sidebar-glance-row">` +
+    `<span class="sidebar-glance-time">Y${state.profile?.year ?? 1} · 第${time.week}周 · ${escapeHtml(time.weekday)} ${escapeHtml(time.clock)}</span>` +
+    `<span class="sidebar-glance-meta">${escapeHtml(nowLabel)}</span>` +
+    `</div>` +
+    (badges.length ? `<div class="sidebar-glance-row">${badges.join('')}</div>` : '');
 }
 
 export function renderMagicPanel(state) {
@@ -203,7 +285,7 @@ export function renderMagicPanel(state) {
 
   el.innerHTML = rankEl + notableHtml + wandHtml + patronusHtml + owlsHtml +
     `<details class="magic-details" open><summary>学科能力</summary>${subjectsHtml}</details>` +
-    `<details class="magic-details" open><summary>已掌握咒语</summary><div class="spell-list">${spellsHtml}</div></details>` +
+    `<details class="magic-details"><summary>已掌握咒语 (${sortedSpells.length})</summary><div class="spell-list">${spellsHtml}</div></details>` +
     (knowledgeHtml ? `<details class="magic-details"><summary>魔药与学识</summary>${knowledgeHtml}</details>` : '');
 }
 
@@ -401,9 +483,9 @@ export function renderFamilyPanel(state) {
     `<div class="family-badges">${attitudeHtml}${playerAttHtml}</div>` +
     estrangedHtml +
     (family.household ? `<p class="hint family-household">🏠 ${escapeHtml(family.household)}</p>` : '') +
-    `<details class="magic-details" open><summary>父母</summary>${parentHtml || '<p class="hint">未设定</p>'}</details>` +
+    `<details class="magic-details"><summary>父母</summary>${parentHtml || '<p class="hint">未设定</p>'}</details>` +
     `<details class="magic-details"><summary>原著关联</summary>${connHtml}</details>` +
-    `<details class="magic-details" open><summary>家族 NPC（${(track.npcTies || []).length}）</summary><div class="family-npc-list">${npcHtml}</div></details>` +
+    `<details class="magic-details"><summary>家族 NPC（${(track.npcTies || []).length}）</summary><div class="family-npc-list">${npcHtml}</div></details>` +
     `<details class="magic-details"><summary>待触发互动</summary><ul class="family-beat-list">${beatHtml}</ul></details>`;
 }
 
@@ -468,8 +550,8 @@ export function renderTimetablePanel(state) {
     : tt.notes ? `<p class="hint tt-note">${escapeHtml(tt.notes)}</p>` : '';
 
   el.innerHTML =
-    `<details class="magic-details" open><summary>今日 · ${escapeHtml(today)} · ${escapeHtml(time.clock)}</summary>` +
-    `<div class="tt-today">${todayHtml || '<p class="hint">无课</p>'}</div></details>` +
+    `<p class="sidebar-panel-title">今日 · ${escapeHtml(today)} · ${escapeHtml(time.clock)} · ${escapeHtml(getDayPhase(time.clock))}</p>` +
+    `<div class="tt-today">${todayHtml || '<p class="hint">无课</p>'}</div>` +
     `<details class="magic-details"><summary>本周课表</summary>` +
     gridHead + gridRows + `</div>${electiveNote}</details>`;
 }
